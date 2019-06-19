@@ -1,0 +1,268 @@
+from __future__ import annotations
+from typing import Iterable, Dict, Union, Optional
+from gd2c.gdscriptclass import GDScriptClass
+from gd2c.loader import JsonGDScriptLoader
+from pathlib import Path, PurePath, PurePosixPath
+from os import PathLike
+
+class BuildDependencyNode:
+    def __init__(self, cls: GDScriptClass):
+        self._cls = cls
+        self._children: Dict[int, BuildDependencyNode] = {}
+
+    def find(self, what: Union[GDScriptClass, str, int]) -> Optional[BuildDependencyNode]:
+        if isinstance(what, str):
+            if what.startswith("res://"):
+                return self._find_by_resource_path(what)
+            else:
+                return self._find_by_name(what)
+        elif isinstance(what, int):
+            return self._find_by_type_id(what)
+
+        raise Exception("what must be GDScriptClass, str, or int")
+
+    def _find_by_resource_path(self, resource_path: str) -> Optional[BuildDependencyNode]:
+        if self.cls.resource_path == resource_path:
+            return self
+
+        for child in self._children.values():
+            found = child._find_by_resource_path(resource_path)
+            if found:
+                return found
+
+        return None
+
+    def _find_by_name(self, name: str) -> Optional[BuildDependencyNode]:
+        if self.cls.name == name:
+            return self
+
+        for child in self._children.values():
+            found = child._find_by_name(name)
+            if found:
+                return found
+
+        return None
+
+    def _find_by_type_id(self, type_id: int) -> Optional[BuildDependencyNode]:
+        if self.cls.type_id == type_id:
+            return self
+
+        for child in self._children.values():
+            found = child._find_by_type_id(type_id)
+            if found:
+                return found
+
+        return None
+
+    def add_child(self, node: BuildDependencyNode):
+        self._children[node.cls.type_id] = node
+
+    def get_own_child(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]) -> Optional[BuildDependencyNode]:
+        if isinstance(what, BuildDependencyNode):
+            if what in self.children:
+                return what
+            else:
+                return None
+        
+        for ch in self.children:
+            if isinstance(what, GDScriptClass):
+                if ch.cls == what:
+                    return ch
+            elif isinstance(what, str):
+                if what.startswith("res://"):
+                    if ch.cls.resource_path == what:
+                        return ch
+                elif ch.cls.name == what:
+                    return ch
+            elif isinstance(what, int):
+                if ch.cls.type_id == what:
+                    return ch
+
+        return None    
+
+    def find_parent(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]) -> Optional[BuildDependencyNode]:
+        if isinstance(what, BuildDependencyNode):
+            child = what
+            stack = [self]
+            while any(stack):
+                node = stack.pop()
+                if what in node.children:
+                    return node
+                else:
+                    stack.extend(node.children)
+
+        elif isinstance(what, GDScriptClass):
+            stack = [self]
+            while any(stack):
+                node = stack.pop()
+                if what.type_id in node._children:
+                    return node
+                else:
+                    stack.extend(node.children)
+
+        elif isinstance(what, str) or isinstance(what, int):
+            stack = [self]
+            while any(stack):
+                node = stack.pop()
+                if node.get_own_child(what):
+                    return node
+
+        return None
+
+    def remove_child(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]):
+        child = self.get_own_child(what)
+        if child:
+            del self._children[child.cls.type_id]
+
+    def find_remove(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]):
+        parent = self.find_parent(what)
+        if parent:
+            parent.remove_child(what)
+
+        return None
+
+    @property
+    def cls(self) -> GDScriptClass:
+        return self._cls
+
+    @property
+    def children(self) -> Iterable[BuildDependencyNode]:
+        for child in self._children.values():
+            yield child
+
+class Project:
+    __next_type_id = 0
+
+    def __init__(self, root_path: Union[Path, PathLike, str]):
+        if not Path(root_path).is_dir():
+            raise Exception("root_path must be a directory")
+
+        self._root = PurePath(root_path)
+        self._classes_by_resource_path: Dict[str, GDScriptClass] = {}
+        self._classes_by_name: Dict[str, GDScriptClass] = {}
+        self._classes_by_type_id: Dict[int, GDScriptClass] = {}
+        self._root_classes: Dict[str, BuildDependencyNode] = {}
+
+    @property
+    def root(self) -> PurePath:
+        return self._root
+
+    def classes(self) -> Iterable[GDScriptClass]:
+        """All GDScript classes in no particular order.
+        """
+        for item in self._classes_by_type_id.values():
+            yield item
+
+    def to_rooted_path(self, filepath: Union[Path, PathLike, str]) -> PurePath:
+        """Returns absolute file system path of a file within the rootPath of the project.
+        """
+        fp = PurePath(filepath)
+        if not fp.is_absolute():
+            fp = Path(self._root, filepath)
+        
+        return fp
+
+    def to_resource_path(self, filepath: Union[Path, PathLike, str]) -> str:
+        """Returns resource path (res://path/to/file) of a file underneath a project root path
+        """
+        rooted = self.to_rooted_path(filepath)
+        rel = rooted.relative_to(self._root)
+        as_str = str(PurePosixPath(rel)).replace('\\', '/')
+        return f'res://{as_str}'
+
+    def to_file_path(self, resourcePath: str) -> PurePath:
+        """Translates the resource path to the physical file path in the file system.
+        """
+        rel = resourcePath.replace('res://', '')
+        return self._root.joinpath(rel)
+
+    def get_class(self, key: Union[int, str]) -> Union[GDScriptClass, None]:
+        """Returns a class that was loaded by the project.
+
+        Args:
+        key (int, str): Either the generated class type-id, class name, or \
+            resource_path of the class.
+        """
+        if (isinstance(key, str)):
+            if (key.startswith("res://")):
+                return self._classes_by_resource_path[key]
+            else:
+                return self._classes_by_name[key]
+        elif isinstance(key, int):
+            return self._classes_by_type_id[key]
+
+        raise Exception("Key must be str or int")
+
+    def add_class(self, cls: GDScriptClass) -> None:
+        if cls.name in self._classes_by_name:
+            raise Exception(f"Class with name '{cls.name}' already registered.")
+        if cls.resource_path in self._classes_by_resource_path:
+            raise Exception(f"Class with resource path `{cls.name}' already registered.")
+        if cls.type_id in self._classes_by_type_id:
+            raise Exception(f"Class with type_id {cls.type_id} already registered.")
+
+        self._classes_by_name[cls.name] = cls
+        self._classes_by_resource_path[cls.resource_path] = cls
+        self._classes_by_type_id[cls.type_id] = cls
+        self._invalidate_build_depenency_tree()
+
+    def remove_class(self, key: Union[int, str]):
+        cls: Optional[GDScriptClass] = None
+        if (isinstance(key, str)):
+            if (key.startswith("res://")):
+                cls = self._classes_by_resource_path.get(key, None)
+            else:
+                cls = self._classes_by_name.get(key, None)
+        elif isinstance(key, int):
+            cls = self._classes_by_type_id.get(key, None)
+        else: 
+            raise Exception("Key must be str or int") 
+
+        if cls:
+            del self._classes_by_resource_path[cls.resource_path]
+            del self._classes_by_name[cls.name]
+            del self._classes_by_type_id[cls.type_id]
+            self._invalidate_build_depenency_tree()
+
+    def _invalidate_build_depenency_tree(self):
+        self._root_classes = {}
+
+    def load_classes(self):
+        loader = JsonGDScriptLoader(self)
+        stack = [self.to_rooted_path('.')]
+        count = 0
+
+        while any(stack):
+            path = stack.pop()
+            for it in path.iterdir():
+                if it.is_dir():
+                    stack.push(it)
+                elif it.is_file():
+                    if str(it).endswith(".gd.json"):
+                        classes = loader.load_classes(it)
+                        for cls in classes:
+                            self.add_class(cls)
+                            count += 1
+
+    def generate_unique_class_name(self):
+        """Generates a type id that is guaranteed to not have been generated for this project.
+        """
+        if Project.__next_type_id > 2_000_000_000:
+            raise Exception("Too many classes")
+
+        Project.__next_type_id += 1
+        return f'Class_{Project.__next_type_id}'
+    
+    def generate_unique_class_type_id(self):
+        """Generates a class name that is guaranteed to not have been generated for this project.
+        Class names are not related to generated type_ids. "Class1" does not necessarily correspond 
+        to GDScriptClass with type_id == 1
+        """        
+        if Project.__next_type_id > 2_000_000_000:
+            raise Exception("Too many classes")
+
+        Project.__next_type_id += 1
+        return Project.__next_type_id
+            
+
+
