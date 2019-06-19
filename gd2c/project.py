@@ -133,10 +133,7 @@ class BuildDependencyNode:
 class Project:
     __next_type_id = 0
 
-    def __init__(self, root_path: Union[Path, PathLike, str]):
-        if not Path(root_path).is_dir():
-            raise Exception("root_path must be a directory")
-
+    def __init__(self, root_path: Union[PurePath, PathLike, str]):
         self._root = PurePath(root_path)
         self._classes_by_resource_path: Dict[str, GDScriptClass] = {}
         self._classes_by_name: Dict[str, GDScriptClass] = {}
@@ -156,18 +153,19 @@ class Project:
     def to_rooted_path(self, filepath: Union[Path, PathLike, str]) -> PurePath:
         """Returns absolute file system path of a file within the rootPath of the project.
         """
-        fp = PurePath(filepath)
+        fp = Path(filepath)
         if not fp.is_absolute():
             fp = Path(self._root, filepath)
         
-        return fp
+        return PurePath(fp.absolute())
 
     def to_resource_path(self, filepath: Union[Path, PathLike, str]) -> str:
         """Returns resource path (res://path/to/file) of a file underneath a project root path
         """
-        rooted = self.to_rooted_path(filepath)
-        rel = rooted.relative_to(self._root)
-        as_str = str(PurePosixPath(rel)).replace('\\', '/')
+        absolute = Path(filepath).absolute()
+        root = Path(self._root).absolute()
+        rel = absolute.relative_to(root)
+        as_str = str(PurePosixPath(rel)).replace('\\', '/').replace(".gd.json", ".gd")
         return f'res://{as_str}'
 
     def to_file_path(self, resourcePath: str) -> PurePath:
@@ -229,7 +227,7 @@ class Project:
 
     def load_classes(self):
         loader = JsonGDScriptLoader(self)
-        stack = [self.to_rooted_path('.')]
+        stack = [Path(self._root)]
         count = 0
 
         while any(stack):

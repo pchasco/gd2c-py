@@ -7,7 +7,7 @@ class GDScriptGlobal:
     def __init__(self, index: int, name: str, original_name: str, vtype: int, kind_code: int, value: str, source: str):
         self.index = index
         self.original_name = original_name
-        self.vtype = vtype
+        self.vtype = VariantType.get(vtype)
         self.kind_code = kind_code
         self.value = value
         self.source = source
@@ -28,9 +28,11 @@ class GDScriptClassConstant:
 
 
 class GDScriptMember:
-    def __init__(self, name: str, index: int):
+    def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int], kind: int):
         self._name = name
         self._index = index
+        self._vtype = VariantType.get(vtype)
+        self._kind = kind
 
     @property
     def name(self) -> str:

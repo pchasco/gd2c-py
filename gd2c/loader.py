@@ -12,33 +12,33 @@ class JsonGDScriptLoader:
     def __init__(self, project: Project):
         self._project = project
 
-    def load_classes(self, path: Path) -> Iterable[GDScriptClass]:
-        with path.open() as f:
+    def load_classes(self, physical_path: Path) -> Iterable[GDScriptClass]:
+        with physical_path.open() as f:
             data = json.load(f)
-            yield self._build_class(path, data)
+            yield self._build_class(physical_path, data)
 
-    def _build_class(self, path: Path, data) -> GDScriptClass:
+    def _build_class(self, physical_path: Path, data) -> GDScriptClass:
         cls = GDScriptClass(
-            self._project.to_resource_path(str(path)), 
+            self._project.to_resource_path(str(physical_path)), 
             data.get("name", None) or self._project.generate_unique_class_name(), 
             self._project.generate_unique_class_type_id())
         cls.base_resource_path = data["base_type"]
         cls.built_in_type = data["type"]
         
         for index, entry in enumerate(data["global_constants"]):
-            glob = GDScriptGlobal(index, data["name"], data["original_name"], data["type_code"], data["kind_code"], data["value"], data["source"])
+            glob = GDScriptGlobal(index, entry["name"], entry["original_name"], entry["type_code"], entry["kind_code"], entry["value"], entry["source"])
             cls.add_global(glob)
 
         for signal in data["signals"]:
             cls.add_signal(signal)
 
-        for index, entry in enumerate(data["members"]):
-            member = GDScriptMember(entry["name"], int(index))
+        for entry in data["members"]:
+            member = GDScriptMember(entry["name"], int(entry["index"]), entry["builtin_type"], int(entry["kind"]))
             cls.add_member(member)
 
         for index, entry in enumerate(data["constants"]):
-            const = GDScriptClassConstant(entry["name"], int(entry["type"]), bytes(list(entry["data"])), entry["declaration"])
-            cls.add_constant(const)
+            cconst = GDScriptClassConstant(entry["name"], int(entry["type"]), bytes(list(entry["data"])), entry["declaration"])
+            cls.add_constant(cconst)
 
         for index, entry in enumerate(data["methods"]):
             func = GDScriptFunction(entry["name"], GDScriptFunction.TYPE_METHOD)
@@ -53,12 +53,12 @@ class JsonGDScriptLoader:
                     pindex)
                 func.add_parameter(param)
 
-            for cindex, centry in enumerate(entry["constants"]):
-                const = GDScriptFunctionConstant(
-                    cindex,
+            for centry in entry["constants"]:
+                mconst = GDScriptFunctionConstant(
+                    int(centry["index"]),
                     centry["type"], 
                     bytes(list(map(lambda x: int(x), centry["data"]))), 
                     centry["declaration"])
-                func.add_constant(const)                    
+                func.add_constant(mconst)                    
 
         return cls
