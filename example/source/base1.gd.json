@@ -1,0 +1,254 @@
+{
+    "global_constants": [
+        {
+            "source": "GlobalConstants",
+            "original_name": "MARGIN_LEFT",
+            "name": "MARGIN_LEFT",
+            "value": 0,
+            "type_code": 2,
+            "kind_code": -1,
+            "index": 0
+        }
+    ],
+    "type": "Node2D",
+    "base_type": null,
+    "members": [
+        {
+            "index": 0,
+            "name": "member1",
+            "kind": 1,
+            "type": 2,
+            "native_type": "",
+            "has_type": true
+        },
+        {
+            "index": 1,
+            "name": "member2",
+            "kind": 0,
+            "type": 0,
+            "native_type": "",
+            "has_type": false
+        }
+    ],
+    "constants": [
+        {
+            "name": "const2",
+            "declaration": "\"string\"",
+            "type": 4,
+            "type_name": "String",
+            "data": [
+                4,
+                0,
+                0,
+                0,
+                6,
+                0,
+                0,
+                0,
+                115,
+                116,
+                114,
+                105,
+                110,
+                103,
+                0,
+                0
+            ]
+        },
+        {
+            "name": "const1",
+            "declaration": "0",
+            "type": 2,
+            "type_name": "int",
+            "data": [
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        }
+    ],
+    "signals": [
+        "signal1",
+        "signal2"
+    ],
+    "methods": [
+        {
+            "name": "_init",
+            "id": "0",
+            "return_type": {
+                "type": 0,
+                "type_name": "",
+                "kind": 0
+            },
+            "stack_size": 4,
+            "parameters": [],
+            "default_arguments": [],
+            "global_names": [
+                "_init"
+            ],
+            "constants": [
+                {
+                    "index": 0,
+                    "type": 2,
+                    "type_name": "int",
+                    "declaration": "0",
+                    "data": [
+                        2,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "index": 1,
+                    "type": 4,
+                    "type_name": "String",
+                    "declaration": "\"string\"",
+                    "data": [
+                        4,
+                        0,
+                        0,
+                        0,
+                        6,
+                        0,
+                        0,
+                        0,
+                        115,
+                        116,
+                        114,
+                        105,
+                        110,
+                        103,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "index": 2,
+                    "type": 2,
+                    "type_name": "int",
+                    "declaration": "1",
+                    "data": [
+                        2,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0
+                    ]
+                },
+                {
+                    "index": 3,
+                    "type": 2,
+                    "type_name": "int",
+                    "declaration": "2",
+                    "data": [
+                        2,
+                        0,
+                        0,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            ],
+            "bytecode": [
+                38,
+                6,
+                9,
+                33554432,
+                67108864,
+                38,
+                7,
+                9,
+                33554433,
+                67108865,
+                25,
+                0,
+                0,
+                83886080,
+                38,
+                13,
+                9,
+                100663296,
+                67108866,
+                38,
+                14,
+                9,
+                100663297,
+                67108867,
+                38,
+                15,
+                39
+            ]
+        },
+        {
+            "name": "method1",
+            "id": "0",
+            "return_type": {
+                "type": 3,
+                "type_name": "",
+                "kind": 1
+            },
+            "stack_size": 3,
+            "parameters": [
+                {
+                    "name": "parameter1",
+                    "type": 2,
+                    "type_name": "",
+                    "kind": 1
+                },
+                {
+                    "name": "parameter2",
+                    "type": 4,
+                    "type_name": "",
+                    "kind": 1
+                }
+            ],
+            "default_arguments": [],
+            "global_names": [],
+            "constants": [
+                {
+                    "index": 0,
+                    "type": 3,
+                    "type_name": "float",
+                    "declaration": "0.0",
+                    "data": [
+                        3,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            ],
+            "bytecode": [
+                38,
+                17,
+                33,
+                67108864,
+                38,
+                18,
+                38,
+                19,
+                39
+            ]
+        }
+    ]
+}
