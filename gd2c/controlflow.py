@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional, Union, Iterable, Tuple, Set
+from typing import List, Optional, Union, Iterable, Tuple, Set, Dict
 from gd2c.bytecode import GDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.gdscriptclass import GDScriptFunction
 
@@ -12,6 +12,13 @@ class BasicBlock:
 
     def __eq__(self, other):
         return other and self._label == other._label
+
+    @property
+    def last_op(self) -> Optional[GDScriptOp]:
+        if any(self.ops):
+            return self.ops[-1]
+        
+        return None
 
 class ControlFlowGraphNode:
     def __init__(self, label: str, block: BasicBlock):
@@ -47,70 +54,146 @@ class Edge:
 
 class ControlFlowGraph:
     def __init__(self):
-        self._nodes: Set[ControlFlowGraphNode] = set()
+        self._nodes: Dict[str, ControlFlowGraphNode] = {}
         self._edges: Dict[Tuple[ControlFlowGraphNode, ControlFlowGraphNode], Edge] = {}
         self._entry_node: Optional[ControlFlowGraphNode] = None
         self._exit_node: Optional[ControlFlowGraphNode] = None
 
     def add_edge(self, edge: Edge):
-        if edge in self._edges:
+        if (edge.source, edge.dest) in self._edges:
             return
 
         self._edges[(edge.source, edge.dest)] = edge
 
-    def find_edge(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode) -> Optional[ControlFlowGraphNode]:
+    def add_node(self, node: ControlFlowGraphNode):
+        self._nodes[node.label] = node
+
+    def find_edge(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode) -> Optional[Edge]:
         return self._edges.get((source, dest), None)
 
-    def find_source_edges(self, source: Union[ControlFlowGraphNode, BasicBlock]) -> Iterable[ControlFlowGraphNode]:
+    def find_source_edges(self, source: Union[ControlFlowGraphNode, BasicBlock]) -> Iterable[Edge]:
         if isinstance(source, ControlFlowGraphNode):
-            for edge in self._edges:
+            for edge in self._edges.values():
                 if edge.source == source:
                     yield edge
         elif isinstance(source, BasicBlock):
-            for edge in self._edges:
+            for edge in self._edges.values():
                 if edge.source.block == source:
                     yield edge
         else:
             raise "source must be ControlFlowGraphNode or BasicBlock"
 
-    def find_dest_edges(self, dest: Union[ControlFlowGraphNode, BasicBlock]) -> Iterable[ControlFlowGraphNode]:
+    def find_dest_edges(self, dest: Union[ControlFlowGraphNode, BasicBlock]) -> Iterable[Edge]:
         if isinstance(dest, ControlFlowGraphNode):
-            for edge in self._edges:
+            for edge in self._edges.values():
                 if edge.dest == dest:
                     yield edge
         elif isinstance(dest, BasicBlock):
-            for edge in self._edges:
+            for edge in self._edges.values():
                 if edge.dest.block == dest:
                     yield edge
         else:
             raise "dest must be ControlFlowGraphNode or BasicBlock"
 
+    def preds(self, node: ControlFlowGraph) -> Set[ControlFlowGraphNode]:
+        return set(map(lambda e: e.source, filter(lambda e: e.dest == node, list(self._edges.values()))))
+
+    def succs(self, node: ControlFlowGraph) -> Set[ControlFlowGraphNode]:
+        return set(map(lambda e: e.dest, filter(lambda e: e.source == node, list(self._edges.values()))))
+
+    def pretty_print(self):
+        print(f"-----------------------------------")
+        print(f"Control Flow Graph")
+        print(f"-----------------------------------")
+
+        worklist = [self._entry_node]
+        visited = set()
+        while any(worklist):
+            node = worklist.pop()
+            if node in visited:
+                continue
+
+            visited.add(node)
+
+            #worklist.extend(list(self.succs(node)))
+            if ('0' in self._nodes) and isinstance(node.block.last_op, (JumpGDScriptOp, JumpIfNotGDScriptOp)):
+                # Here we assume nodes are labeled with the address of the block that created them
+                worklist.append(self._nodes[str(node.block.last_op.branch)])
+                worklist.append(self._nodes[str(node.block.last_op.fallthrough)])
+            elif ('0' in self._nodes) and isinstance(node.block.last_op, JumpIfGDScriptOp):
+                # Here we assume nodes are labeled with the address of the block that created them
+                worklist.append(self._nodes[str(node.block.last_op.fallthrough)])                
+                worklist.append(self._nodes[str(node.block.last_op.branch)])
+            else:
+                worklist.extend(self.succs(node))
+
+            print(f"  Block: {node.label}")
+            print(f"  Preds: {', '.join(map(lambda n: n.label, self.preds(node)))}")
+            print(f"  Succs: {', '.join(map(lambda n: n.label, self.succs(node)))}")
+            print(f"  Ops:")
+            for op in node.block.ops:
+                print(f"    {str(op)}")
+
+            print("")
+        
+        print("")
+
 
 def build_control_flow_graph(func: GDScriptFunction):
-    cfg = ControlFlowGraph()
-
-    nodes: Set[ControlFlowGraphNode] = set()
+    nodes: Dict[int, ControlFlowGraphNode] = {}
     entry_node = ControlFlowGraphNode('__entry', BasicBlock())
+    entry_node.block.ops.append(JumpGDScriptOp(0))
     exit_node = ControlFlowGraphNode('__exit', BasicBlock())
+
+    # Identify jump targets which always begin new blocks
 
     jump_targets: Set[int] = set()
     for ip, op in func.ops():
         if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             jump_targets = jump_targets | set((op.branch, op.fallthrough))
 
+    # find blocks and create nodes
+
     block: Block = None # type: ignore
     new_block_flag = True
     for ip, op in func.ops():
-        if new_block_flag or ip in jump_targets:
+        if new_block_flag or (ip in jump_targets):
+            if block:
+                # For simplicity we want all blocks to end in a branch instruction
+                # to the beginning of the next block or a return
+                if not isinstance(block.last_op, (ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+                    block.ops.append(JumpGDScriptOp(ip))
+
             block = BasicBlock()
             node = ControlFlowGraphNode(str(ip), block)
-            nodes.add(node)
-            return_flag = False
+            nodes[ip] = node
+            new_block_flag = False
 
-        block.add_op(op)
+        block.ops.append(op)
 
         if isinstance(op, (ReturnGDScriptOp,)):
             new_block_flag = True
+
+    # create edges
+    cfg = ControlFlowGraph()
+    cfg.add_edge(Edge(entry_node, nodes[0]))
+    for node in nodes.values():
+        last_op = node.block.ops[-1]
+        if isinstance(last_op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+            cfg.add_edge(Edge(node, nodes[last_op.branch]))
+            cfg.add_edge(Edge(node, nodes[last_op.fallthrough]))
+        elif isinstance(last_op, (ReturnGDScriptOp, EndGDScriptOp)):
+            cfg.add_edge(Edge(node, exit_node))
+
+    cfg._entry_node = entry_node
+    cfg.add_node(entry_node)
+    cfg._exit_node = exit_node
+    cfg.add_node(exit_node)
+
+    return cfg
+
+
+
 
 
 
