@@ -60,8 +60,8 @@ class GDScriptFunction:
         self._parameters: Dict[int, GDScriptFunctionParameter] = {}
         self._constants: Dict[int, GDScriptFunctionConstant] = {}
         self._ops: List[Tuple[int, GDScriptOp]] = []
+        self.global_names: List[str] = []
 
-    @property
     def parameters(self) -> Iterable[GDScriptFunctionParameter]:
         for param in self._parameters.values():
             yield param
@@ -72,14 +72,9 @@ class GDScriptFunction:
     def add_parameter(self, param: GDScriptFunctionParameter):
         self._parameters[param.index] = param
 
-    @property
-    def constant(self) -> Iterable[GDScriptFunctionConstant]:
+    def constants(self) -> Iterable[GDScriptFunctionConstant]:
         for const in self._constants.values():
             yield const
-
-    def ops(self) -> Iterable[Tuple[int, GDScriptOp]]:
-        for tup in self._ops:
-            yield tup
 
     def len_constants(self):
         return len(self._constants)
@@ -87,8 +82,33 @@ class GDScriptFunction:
     def add_constant(self, const: GDScriptFunctionConstant):
         self._constants[const.index] = const
 
+    def ops(self) -> Iterable[Tuple[int, GDScriptOp]]:
+        for tup in self._ops:
+            yield tup
+
     def add_op(self, addr: int, op: GDScriptOp):
         self._ops.append((addr, op))
+
+    def pretty_print(self):
+        print(f"Function: {self.name}")
+        print(f"  Return type: {self.return_vtype}")
+        print(f"  Stack size: {self.stack_size}")
+        print(f"  Parameters:")
+        for p in sorted(self.parameters(), key=lambda v: v.index):
+            print(f"    {str(p.index).ljust(3)}: {p.name}: {p.vtype}")
+        print(f"  Default arguments jump table:")
+        for d in self.default_arguments_jump_table:
+            print(f"    {d}")
+        print(f"  Constants:")
+        for const in sorted(self.constants(), key=lambda v: v.index):
+            print(f"    {str(const.index).ljust(3)}: {const.declaration}")
+        print(f"  Global names:")
+        for name in self.global_names:
+            print(f"    {str(name.index).ljust(3)}: {name}")
+        print(f"  Ops:")
+        for ip, op in self.ops():
+            print(f"{str(ip).rjust(8)}: {str(op)}")  
+        print(f"")      
 
 class GDScriptClass:
     def __init__(self, resource_path: str, name: str, type_id: int):
@@ -138,7 +158,7 @@ class GDScriptClass:
         return self._base
     @base.setter
     def base(self, value: Union[GDScriptClass, None]):
-        self.base = value
+        self._base = value
         if value:
             self._base_resource_path = value.resource_path
         else:

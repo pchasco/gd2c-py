@@ -277,6 +277,7 @@ class Project:
 
         Project.__next_type_id += 1
         return Project.__next_type_id
+
             
 
 

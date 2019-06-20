@@ -627,7 +627,7 @@ class CallSelfBaseGDScriptOp(GDScriptOp):
         self._reads = set(self.args)
 
     def __str__(self):
-        return f"CALLBASE {self.dest} = {self.receiver}.{self.name_index}(...)"
+        return f"CALLBASE {self.dest} = self.{self.name_index}(...)"
 
     @property
     def stride(self) -> int:

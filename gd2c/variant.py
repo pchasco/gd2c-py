@@ -56,6 +56,9 @@ class VariantType:
     def name(self):
         return self._name
 
+    def __str__(self):
+        return self._name
+
 _vtypes: Dict[int, VariantType] = {}
 
 class Variant:
