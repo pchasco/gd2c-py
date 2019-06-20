@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import Union, Optional, List, Dict, Set, Iterable
+from typing import Union, Optional, List, Dict, Set, Iterable, Tuple
 from gd2c.variant import VariantType
+from gd2c.bytecode import GDScriptOp
 import re
 
 class GDScriptGlobal:
@@ -58,6 +59,7 @@ class GDScriptFunction:
         self.return_vtype = VariantType.NIL
         self._parameters: Dict[int, GDScriptFunctionParameter] = {}
         self._constants: Dict[int, GDScriptFunctionConstant] = {}
+        self._ops: List[Tuple[int, GDScriptOp]] = []
 
     @property
     def parameters(self) -> Iterable[GDScriptFunctionParameter]:
@@ -75,12 +77,18 @@ class GDScriptFunction:
         for const in self._constants.values():
             yield const
 
+    def ops(self) -> Iterable[Tuple[int, GDScriptOp]]:
+        for tup in self._ops:
+            yield tup
+
     def len_constants(self):
         return len(self._constants)
 
     def add_constant(self, const: GDScriptFunctionConstant):
         self._constants[const.index] = const
 
+    def add_op(self, addr: int, op: GDScriptOp):
+        self._ops.append((addr, op))
 
 class GDScriptClass:
     def __init__(self, resource_path: str, name: str, type_id: int):

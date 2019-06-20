@@ -1,12 +1,11 @@
 from __future__ import annotations
-from typing import List, Optional, Union, Iterable, Tuple
-from gd2c.bytecode import GDScriptOp
+from typing import List, Optional, Union, Iterable, Tuple, Set
+from gd2c.bytecode import GDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.gdscriptclass import GDScriptFunction
 
 class BasicBlock:
-    def __init__(self, label: str):
-        self._label = label
-        self._ops: List[GDScriptOp] = []
+    def __init__(self):
+        self.ops: List[GDScriptOp] = []
 
     def __hash__(self):
         return hash(label)
@@ -14,14 +13,18 @@ class BasicBlock:
     def __eq__(self, other):
         return other and self._label == other._label
 
-
 class ControlFlowGraphNode:
-    def __init__(self, block: BasicBlock):
-        self._block: BasicBlock = block
+    def __init__(self, label: str, block: BasicBlock):
+        self._block = block
+        self._label = label
 
     @property
     def block(self):
         return self._block
+
+    @property
+    def label(self):
+        return self._label
 
 class Edge:
     def __init__(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode):
@@ -41,7 +44,6 @@ class Edge:
 
     def __eq__(self, other) -> bool:
         return other and self.source == other.source and self.dest == other.dest
-
 
 class ControlFlowGraph:
     def __init__(self):
@@ -85,6 +87,34 @@ class ControlFlowGraph:
 
 
 def build_control_flow_graph(func: GDScriptFunction):
-    pass
+    cfg = ControlFlowGraph()
 
-        
+    nodes: Set[ControlFlowGraphNode] = set()
+    entry_node = ControlFlowGraphNode('__entry', BasicBlock())
+    exit_node = ControlFlowGraphNode('__exit', BasicBlock())
+
+    jump_targets: Set[int] = set()
+    for ip, op in func.ops():
+        if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+            jump_targets = jump_targets | set((op.branch, op.fallthrough))
+
+    block: Block = None # type: ignore
+    new_block_flag = True
+    for ip, op in func.ops():
+        if new_block_flag or ip in jump_targets:
+            block = BasicBlock()
+            node = ControlFlowGraphNode(str(ip), block)
+            nodes.add(node)
+            return_flag = False
+
+        block.add_op(op)
+
+        if isinstance(op, (ReturnGDScriptOp,)):
+            new_block_flag = True
+
+
+
+
+                
+
+  

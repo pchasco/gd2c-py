@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from gd2c.gdscriptclass import GDScriptClass, GDScriptClassConstant, GDScriptFunctionConstant, GDScriptFunction, GDScriptGlobal, GDScriptMember, GDScriptFunctionParameter
 from gd2c.variant import VariantType
+from gd2c.bytecode import extract
 from typing import List, Iterable, TYPE_CHECKING
 import json
 
@@ -59,6 +60,14 @@ class JsonGDScriptLoader:
                     centry["type"], 
                     bytes(list(map(lambda x: int(x), centry["data"]))), 
                     centry["declaration"])
-                func.add_constant(mconst)                    
+                func.add_constant(mconst)         
+
+            ip = 0
+            while ip < len(entry["bytecode"]):
+                op = extract(func, entry["bytecode"], ip)
+                func.add_op(ip, op)
+                ip += op.stride  
+
+            cls.add_function(func)     
 
         return cls
