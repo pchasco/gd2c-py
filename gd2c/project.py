@@ -138,7 +138,6 @@ class Project:
         self._classes_by_resource_path: Dict[str, GDScriptClass] = {}
         self._classes_by_name: Dict[str, GDScriptClass] = {}
         self._classes_by_type_id: Dict[int, GDScriptClass] = {}
-        self._root_classes: Dict[str, BuildDependencyNode] = {}
 
     @property
     def root(self) -> PurePath:
@@ -149,6 +148,22 @@ class Project:
         """
         for item in self._classes_by_type_id.values():
             yield item
+
+    def derived_classes(self, what: Union[GDScriptClass, str, int]):
+        """Returns all GDScript classes that directly derive from the specified class.
+
+        Args:
+          what: Either a GDScriptClass, resource path, class name, or class type_id indicating the base class. Can be None.
+        """
+        base_cls: Optional[GDScriptClass] = None
+        if isinstance(what, GDScriptClass):
+            base_cls = what
+        else:
+            base_cls = self.get_class(what)
+
+        for cls in self._classes_by_type_id.values():
+            if cls.base == base_cls:
+                yield cls
 
     def to_rooted_path(self, filepath: Union[Path, PathLike, str]) -> PurePath:
         """Returns absolute file system path of a file within the rootPath of the project.
@@ -202,7 +217,6 @@ class Project:
         self._classes_by_name[cls.name] = cls
         self._classes_by_resource_path[cls.resource_path] = cls
         self._classes_by_type_id[cls.type_id] = cls
-        self._invalidate_build_depenency_tree()
 
     def remove_class(self, key: Union[int, str]):
         cls: Optional[GDScriptClass] = None
@@ -220,16 +234,13 @@ class Project:
             del self._classes_by_resource_path[cls.resource_path]
             del self._classes_by_name[cls.name]
             del self._classes_by_type_id[cls.type_id]
-            self._invalidate_build_depenency_tree()
-
-    def _invalidate_build_depenency_tree(self):
-        self._root_classes = {}
 
     def load_classes(self):
         loader = JsonGDScriptLoader(self)
         stack = [Path(self._root)]
         count = 0
 
+        # load classes
         while any(stack):
             path = stack.pop()
             for it in path.iterdir():
@@ -241,6 +252,11 @@ class Project:
                         for cls in classes:
                             self.add_class(cls)
                             count += 1
+
+        # link classes
+        for cls in self._classes_by_type_id.values():
+            if cls.base_resource_path:
+                cls.base = self._classes_by_resource_path[cls.base_resource_path]
 
     def generate_unique_class_name(self):
         """Generates a type id that is guaranteed to not have been generated for this project.

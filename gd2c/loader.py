@@ -33,7 +33,7 @@ class JsonGDScriptLoader:
             cls.add_signal(signal)
 
         for entry in data["members"]:
-            member = GDScriptMember(entry["name"], int(entry["index"]), entry["builtin_type"], int(entry["kind"]))
+            member = GDScriptMember(entry["name"], int(entry["index"]), entry["type"])
             cls.add_member(member)
 
         for index, entry in enumerate(data["constants"]):

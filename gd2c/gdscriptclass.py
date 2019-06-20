@@ -28,11 +28,10 @@ class GDScriptClassConstant:
 
 
 class GDScriptMember:
-    def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int], kind: int):
+    def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int]):
         self._name = name
         self._index = index
         self._vtype = VariantType.get(vtype)
-        self._kind = kind
 
     @property
     def name(self) -> str:
