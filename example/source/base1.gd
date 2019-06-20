@@ -16,3 +16,15 @@ func _init():
 func method1(parameter1: int, parameter2: String) -> float:
 	return 0.0
 
+func if_not_nested(parameter1: int):
+	if parameter1 > 0:
+		parameter1 = 1
+	return parameter1
+
+func if_else(parameter1: int):
+	if parameter1 > 0:
+		parameter1 = 1
+	else:
+		parameter1 = -1
+	return parameter1
+
