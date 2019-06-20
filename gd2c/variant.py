@@ -39,6 +39,8 @@ class VariantType:
             return _vtypes[value]
         elif isinstance(value, str):
             return _vtypes[int(value)]
+        elif value is None:
+            return VariantType.NIL
             
         raise "Value must be int, str, or VariantType"
 
