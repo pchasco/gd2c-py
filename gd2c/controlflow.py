@@ -5,7 +5,8 @@ from gd2c.gdscriptclass import GDScriptFunction
 
 class BasicBlock:
     def __init__(self):
-        self.ops: List[GDScriptOp] = []
+        self._ops: List[GDScriptOp] = []
+        self._locked = False
 
     def __hash__(self):
         return hash(label)
@@ -14,11 +15,60 @@ class BasicBlock:
         return other and self._label == other._label
 
     @property
+    def ops(self) -> Iterable[GDScriptOp]:
+        return list(self._ops)
+
+    @property
     def last_op(self) -> Optional[GDScriptOp]:
-        if any(self.ops):
-            return self.ops[-1]
+        if any(self._ops):
+            return self._ops[-1]
         
         return None
+
+    @property
+    def locked(self):
+        """Indicates that no changes that could alter control flow may be added"""
+        return self._locked
+
+    def lock(self):
+        """Lock the BasicBlock so that instructions that may alter control flow cannot be added"""
+        self._locked = True
+
+    def append_op(self, op: GDScriptOp):
+        """Appends operation to the end of the block. If the block is locked, inserting
+        a branch instruction will raise an error."""
+
+        if self._locked and isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, ReturnGDScriptOp)):
+            raise Exception("Cannot insert instruction that would alter control flow")
+
+        self._ops.append(op)
+    
+    def insert_ops_before(self, insert_before: Union[GDScriptOp], ops: Iterable[GDScriptOp]):
+        """Insert a sequence of ops into the block before GDScriptOp insert_before.
+
+        Attempting to insert a branch instruction will raise an exception if the block is locked. 
+        If a branch operation is to be inserted, you must split the block and insert new 
+        nodes into the control flow graph.
+
+        Args:
+        insert_before (GDScriptOp): Existing op to insert new ops before.
+        ops (Iterable[GDScriptOp]): Sequence of ops to insert in order.
+        """
+        index = self._ops.index(insert_before)
+        for op in ops:
+            if self._locked and isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, ReturnGDScriptOp)):
+                raise Exception("Cannot insert instruction that would alter control flow")
+            self._ops.insert(index, op)
+            index += 1
+
+    def replace_branch_address(self, old_addr: int, new_addr: int):
+        """Change any instance of old_addr in a branch to new_addr"""
+        for op in self._ops:
+            if self._locked and isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+                if op.fallthrough == old_addr:
+                    op.fallthrough = new_addr
+                if op.branch == old_addr:
+                    op.branch = new_addr
 
 class ControlFlowGraphNode:
     def __init__(self, label: str, block: BasicBlock):
@@ -63,7 +113,7 @@ class ControlFlowGraph:
         if (edge.source, edge.dest) in self._edges:
             return
 
-        self._edges[(edge.source, edge.dest)] = edge
+        self._edges[(edge.source, edge.dest)] = edge        
 
     def add_node(self, node: ControlFlowGraphNode):
         self._nodes[node.label] = node
@@ -95,11 +145,19 @@ class ControlFlowGraph:
         else:
             raise "dest must be ControlFlowGraphNode or BasicBlock"
 
-    def preds(self, node: ControlFlowGraph) -> Set[ControlFlowGraphNode]:
+    def preds(self, node: ControlFlowGraphNode) -> Set[ControlFlowGraphNode]:
         return set(map(lambda e: e.source, filter(lambda e: e.dest == node, list(self._edges.values()))))
 
-    def succs(self, node: ControlFlowGraph) -> Set[ControlFlowGraphNode]:
+    def succs(self, node: ControlFlowGraphNode) -> Set[ControlFlowGraphNode]:
         return set(map(lambda e: e.dest, filter(lambda e: e.source == node, list(self._edges.values()))))
+
+    @property
+    def entry_node(self) -> Optional[ControlFlowGraphNode]:
+        return self._entry_node
+    
+    @property
+    def exit_node(self) -> Optional[ControlFlowGraphNode]:
+        return self._exit_node
 
     def pretty_print(self):
         print(f"-----------------------------------")
@@ -115,7 +173,6 @@ class ControlFlowGraph:
 
             visited.add(node)
 
-            #worklist.extend(list(self.succs(node)))
             if ('0' in self._nodes) and isinstance(node.block.last_op, (JumpGDScriptOp, JumpIfNotGDScriptOp)):
                 # Here we assume nodes are labeled with the address of the block that created them
                 worklist.append(self._nodes[str(node.block.last_op.branch)])
@@ -163,13 +220,15 @@ def build_control_flow_graph(func: GDScriptFunction):
                 # to the beginning of the next block or a return
                 if not isinstance(block.last_op, (ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
                     block.ops.append(JumpGDScriptOp(ip))
+                
+                block.lock()
 
             block = BasicBlock()
             node = ControlFlowGraphNode(str(ip), block)
             nodes[ip] = node
             new_block_flag = False
 
-        block.ops.append(op)
+        block.append_op(op)
 
         if isinstance(op, (ReturnGDScriptOp,)):
             new_block_flag = True
