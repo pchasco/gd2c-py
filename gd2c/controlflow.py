@@ -157,10 +157,6 @@ class ControlFlowGraph:
         return self._nodes.values()
 
     def pretty_print(self):
-        print(f"-----------------------------------")
-        print(f"Control Flow Graph")
-        print(f"-----------------------------------")
-
         worklist = [self._entry_node]
         visited = set()
         while any(worklist):

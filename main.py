@@ -11,7 +11,14 @@ for cls in project.classes():
     print(f"Class: {cls.name}")
     print(f"---------------------------------------------")
     for func in cls.functions():
+        print(f"-----------------------------------")
+        print(f"Function {func.name}")
+        print(f"-----------------------------------")
         func.pretty_print()
+
+        print(f"-----------------------------------")
+        print(f"Control Flow Graph {func.name}")
+        print(f"-----------------------------------")
         cfg = build_control_flow_graph(func)
         cfg.pretty_print()
 
