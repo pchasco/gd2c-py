@@ -216,9 +216,7 @@ def build_control_flow_graph(func: GDScriptFunction):
                 # For simplicity we want all blocks to end in a branch instruction
                 # to the beginning of the next block or a return
                 if not isinstance(block.last_op, (ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
-                    block.ops.append(JumpGDScriptOp(ip))
-                
-                block.lock()
+                    block.append_op(JumpGDScriptOp(ip))
 
             block = BasicBlock()
             node = ControlFlowGraphNode(str(ip), block)
@@ -227,14 +225,17 @@ def build_control_flow_graph(func: GDScriptFunction):
 
         block.append_op(op)
 
-        if isinstance(op, (ReturnGDScriptOp,)):
+        if isinstance(op, (ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             new_block_flag = True
+
+    for node in nodes.values():
+        node.block.lock()            
 
     # create edges
     cfg = ControlFlowGraph()
     cfg.add_edge(Edge(entry_node, nodes[0]))
     for node in nodes.values():
-        last_op = node.block.ops[-1]
+        last_op = node.block.last_op
         if isinstance(last_op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             cfg.add_edge(Edge(node, nodes[last_op.branch]))
             cfg.add_edge(Edge(node, nodes[last_op.fallthrough]))

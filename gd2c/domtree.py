@@ -84,7 +84,7 @@ def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode
 
     # Each node that is not reachable, set node as its dominator
     for n, t in reachable.items():
-        if t.flag != dfs and t.dom < 0:
+        if (n is not node) and t.flag != dfs and t.dom < 0:
             reachable[n].dom = dfs
 
 def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
@@ -99,9 +99,10 @@ def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
     return DomTree(dfs[0], nodes.values())
 
 def build_domtree_naive(cfg: ControlFlowGraph) -> DomTree:
-    dfs_numbers = _assign_dfs_numbers(cfg)    
-    for t in sorted(dfs_numbers.values(), key=lambda n: n.dfs):
+    dfs_numbers = _assign_dfs_numbers(cfg)  
+    for t in sorted(dfs_numbers.values(), key=lambda n: n.dfs, reverse=True):
         _mark_dominators(cfg, dfs_numbers, t.node)
+    dfs_numbers[cfg.entry_node].dom = dfs_numbers[cfg.entry_node].dfs # type: ignore
     return _make_tree(dfs_numbers)
 
 
