@@ -30,3 +30,12 @@ func if_else(parameter1: int):
 		parameter1 = -1
 	return parameter1
 
+func diamond_dom(a):
+	a = a * 1
+	if a == 2:
+		a = a * 3
+	else:
+		a = a * 4
+	a = a * 5
+	return a
+
