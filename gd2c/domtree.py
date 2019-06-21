@@ -11,7 +11,7 @@ class DomTreeNode:
 
     def add_child(self, node: 'DomTreeNode'):
         node._parent = self
-        if not node is self:
+        if node is not self:
             self._children.add(node)
     
     def remove_child(self, child: 'DomTreeNode'):
@@ -33,7 +33,11 @@ class DomTree:
         def iterate(node, depth):
             print(f"{''.ljust(depth)}{node.dfs_number}")
             for child in node.children():
-                iterate(child, depth + 1)
+                if child is not node:
+                    iterate(child, depth + 1)
+                else:
+                    print(f"{''.ljust(depth + 1)}{child.dfs_number}")
+
         iterate(self._root, 0)
 
 
@@ -69,14 +73,10 @@ def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode
     stack = [cfg.entry_node]
     dfs = reachable[node].dfs
 
-    # Entry node dominates itself
-    reachable[cfg.entry_node].flag = dfs
-    reachable[cfg.entry_node].dom = dfs
-
     # Test which nodes are reachable without passing through node
     while any(stack):
         n = cast(ControlFlowGraphNode, stack.pop())
-        if n is node or n in visited:
+        if (n is node) or (n in visited):
             continue
         visited.add(n)
         reachable[n].flag = dfs
@@ -84,7 +84,7 @@ def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode
 
     # Each node that is not reachable, set node as its dominator
     for n, t in reachable.items():
-        if not n is node and t.flag != dfs and t.dom < 0:
+        if t.flag != dfs and t.dom < 0:
             reachable[n].dom = dfs
 
 def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
