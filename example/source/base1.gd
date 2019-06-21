@@ -24,6 +24,8 @@ func if_not_nested(parameter1: int):
 func if_else(parameter1: int):
 	if parameter1 > 0:
 		parameter1 = 1
+		if parameter1 == 2:
+			parameter1 = 3
 	else:
 		parameter1 = -1
 	return parameter1
