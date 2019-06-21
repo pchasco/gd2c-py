@@ -1,17 +1,18 @@
 from __future__ import annotations
-from typing import Set, List, Dict, Optional, Iterable
+from typing import Set, List, Dict, Optional, Iterable, Tuple, cast
 from gd2c.controlflow import BasicBlock, ControlFlowGraph, ControlFlowGraphNode
 
 class DomTreeNode:
-    def __init__(self, block: BasicBlock):
+    def __init__(self, block: BasicBlock, dfs: int):
         self._block = block
         self._children: Set['DomTreeNode'] = set()
         self._parent: Optional['DomTreeNode'] = self
-        self.id = -1
+        self.dfs_number = dfs
 
     def add_child(self, node: 'DomTreeNode'):
-        self._children.add(node)
         node._parent = self
+        if not node is self:
+            self._children.add(node)
     
     def remove_child(self, child: 'DomTreeNode'):
         self._children.remove(child)
@@ -28,55 +29,79 @@ class DomTree:
     def root(self):
         return self._root
 
-def build_domtree_naive(cfg: ControlFlowGraph) -> DomTreeNode:
+    def pretty_print(self):
+        def iterate(node, depth):
+            print(f"{''.ljust(depth)}{node.dfs_number}")
+            for child in node.children():
+                iterate(child, depth + 1)
+        iterate(self._root, 0)
 
-    # First assign dfs numbers
-    nodes: List[DomTreeNode] = []
+
+class Temp:
+    def __init__(self, node: ControlFlowGraphNode, dfs: int):
+        self.node = node
+        self.dfs = dfs
+        self.dom = -1
+        self.flag = -1
+
+
+def _assign_dfs_numbers(cfg: ControlFlowGraph) -> Dict[ControlFlowGraphNode, Temp]:
+    nodes: Dict[ControlFlowGraphNode, Temp] = {}
     visited: Set[ControlFlowGraphNode] = set()
-    dfs = 0
     stack = [cfg.entry_node]
+    dfs = 0
     while any(stack):
-        cfg_node = stack.pop()
-        assert cfg_node
-
+        cfg_node = cast(ControlFlowGraphNode, stack.pop())
         if cfg_node in visited:
             continue
         
         visited.add(cfg_node)
-
-        if not cfg_node.block:
-            raise Exception("ControlFlowGraph nodes must have the block property populated")
-
-        dom_node = DomTreeNode(cfg_node.block)
-        dom_node.id = dfs
-        nodes.append(dom_node)
+        nodes[cfg_node] = Temp(cfg_node, dfs)
         dfs += 1
-
         stack.extend(cfg.succs(cfg_node))
 
-    # find dominators
-    dominators: Dict[int, int] = {}
-    dominators[0] = 0
+    return nodes
 
-    iteration = 0
-
-    for node in nodes:
-        _mark_dominators(cfg, nodes, node)
-
-def _find_reachable(cfg: ControlFlowGraph, nodes: Iterable[DomTreeNode], node: DomTreeNode):
-    stack = [cfg.entry_node]
+def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode, Temp], node: ControlFlowGraphNode):
+    assert cfg.entry_node
+    
     visited: Set[ControlFlowGraphNode] = set()
-    while any(stack):
-        n = stack.pop()
-        assert n
+    stack = [cfg.entry_node]
+    dfs = reachable[node].dfs
 
+    # Entry node dominates itself
+    reachable[cfg.entry_node].flag = dfs
+    reachable[cfg.entry_node].dom = dfs
+
+    # Test which nodes are reachable without passing through node
+    while any(stack):
+        n = cast(ControlFlowGraphNode, stack.pop())
         if n is node or n in visited:
             continue
-
         visited.add(n)
-
+        reachable[n].flag = dfs
         stack.extend(cfg.succs(n))
 
-    return visited
+    # Each node that is not reachable, set node as its dominator
+    for n, t in reachable.items():
+        if not n is node and t.flag != dfs and t.dom < 0:
+            reachable[n].dom = dfs
+
+def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
+    nodes = dict(map(lambda n: (n.node, DomTreeNode(n.node.block, n.dfs)), reachable.values()))
+    dfs = dict(map(lambda nn: (nn.dfs_number, nn), nodes.values()))
+
+    for nnn in reachable.values():
+        child = nodes[nnn.node]
+        parent = dfs[nnn.dom]
+        parent.add_child(child)
+
+    return DomTree(dfs[0], nodes.values())
+
+def build_domtree_naive(cfg: ControlFlowGraph) -> DomTree:
+    dfs_numbers = _assign_dfs_numbers(cfg)    
+    for t in sorted(dfs_numbers.values(), key=lambda n: n.dfs):
+        _mark_dominators(cfg, dfs_numbers, t.node)
+    return _make_tree(dfs_numbers)
 
 

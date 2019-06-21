@@ -8,12 +8,6 @@ class BasicBlock:
         self._ops: List[GDScriptOp] = []
         self._locked = False
 
-    def __hash__(self):
-        return hash(label)
-
-    def __eq__(self, other):
-        return other and self._label == other._label
-
     @property
     def ops(self) -> Iterable[GDScriptOp]:
         return list(self._ops)
@@ -158,6 +152,9 @@ class ControlFlowGraph:
     @property
     def exit_node(self) -> Optional[ControlFlowGraphNode]:
         return self._exit_node
+
+    def nodes(self) -> Iterable[ControlFlowGraphNode]:
+        return self._nodes.values()
 
     def pretty_print(self):
         print(f"-----------------------------------")

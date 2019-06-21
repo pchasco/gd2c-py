@@ -1,4 +1,5 @@
 from gd2c.project import Project
+from gd2c.domtree import build_domtree_naive
 
 project = Project("./example/source")
 project.load_classes()
@@ -13,5 +14,10 @@ for cls in project.classes():
         func.pretty_print()
         cfg = build_control_flow_graph(func)
         cfg.pretty_print()
+
+        tree = build_domtree_naive(cfg)
+        print("-- DOMTREE ---------------------------------")
+        tree.pretty_print()
     print("")
+
 
