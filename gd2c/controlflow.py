@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional, Union, Iterable, Tuple, Set, Dict
+from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet
 from gd2c.bytecode import GDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.gdscriptclass import GDScriptFunction
 
@@ -7,6 +7,8 @@ class BasicBlock:
     def __init__(self):
         self._ops: List[GDScriptOp] = []
         self._locked = False
+        self._defs: FrozenSet[int] = frozenset()
+        self._users: FrozenSet[int] = frozenset()
 
     @property
     def ops(self) -> Iterable[GDScriptOp]:
@@ -18,6 +20,14 @@ class BasicBlock:
             return self._ops[-1]
         
         return None
+
+    @property
+    def defs(self) -> FrozenSet[int]:
+        return self._defs
+    
+    @property
+    def uses(self) -> FrozenSet[int]:
+        return self._uses
 
     @property
     def locked(self):
@@ -64,10 +74,22 @@ class BasicBlock:
                 if op.branch == old_addr:
                     op.branch = new_addr
 
+    def update_def_use(self):
+        defs = set()
+        uses = set()
+
+        for op in self._ops:
+            uses.update(op.reads - defs)
+            defs.update(op.writes)
+
+        self._defs = frozenset(defs)
+        self._uses = frozenset(uses)
+
 class ControlFlowGraphNode:
     def __init__(self, label: str, block: BasicBlock):
         self._block = block
         self._label = label
+        self._live: Set[int] = set()
 
     @property
     def block(self):
@@ -115,35 +137,26 @@ class ControlFlowGraph:
     def find_edge(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode) -> Optional[Edge]:
         return self._edges.get((source, dest), None)
 
-    def find_source_edges(self, source: Union[ControlFlowGraphNode, BasicBlock]) -> Iterable[Edge]:
-        if isinstance(source, ControlFlowGraphNode):
-            for edge in self._edges.values():
-                if edge.source == source:
-                    yield edge
-        elif isinstance(source, BasicBlock):
-            for edge in self._edges.values():
-                if edge.source.block == source:
-                    yield edge
-        else:
-            raise "source must be ControlFlowGraphNode or BasicBlock"
-
-    def find_dest_edges(self, dest: Union[ControlFlowGraphNode, BasicBlock]) -> Iterable[Edge]:
-        if isinstance(dest, ControlFlowGraphNode):
-            for edge in self._edges.values():
-                if edge.dest == dest:
-                    yield edge
-        elif isinstance(dest, BasicBlock):
-            for edge in self._edges.values():
-                if edge.dest.block == dest:
-                    yield edge
-        else:
-            raise "dest must be ControlFlowGraphNode or BasicBlock"
-
     def preds(self, node: ControlFlowGraphNode) -> Set[ControlFlowGraphNode]:
-        return set(map(lambda e: e.source, filter(lambda e: e.dest == node, list(self._edges.values()))))
+        return set(map(lambda e: e.source, filter(lambda e: e.dest == node, self._edges.values())))
 
     def succs(self, node: ControlFlowGraphNode) -> Set[ControlFlowGraphNode]:
-        return set(map(lambda e: e.dest, filter(lambda e: e.source == node, list(self._edges.values()))))
+        return set(map(lambda e: e.dest, filter(lambda e: e.source == node, self._edges.values())))
+
+    def back_edges(self, node: ControlFlowGraphNode) -> Set[Edge]:
+        return set(filter(lambda e: e.source == node, list(self._edges.values())))
+
+    def forward_edges(self, node: ControlFlowGraphNode) -> Set[Edge]:
+        return set(filter(lambda e: e.dest == node, list(self._edges.values())))
+
+    def remove_edge(self, edge: Edge):
+        del self._edges[(edge.source, edge.dest)]
+
+    def remove_node(self, node: ControlFlowGraphNode):
+        if any(self.preds(node)) or any(self.succs(node)):
+            raise Exception("Cannot delete node with edges. Remove and resolve edges first.")
+
+        del self._nodes[node.label]
 
     @property
     def entry_node(self) -> Optional[ControlFlowGraphNode]:
@@ -155,6 +168,29 @@ class ControlFlowGraph:
 
     def nodes(self) -> Iterable[ControlFlowGraphNode]:
         return self._nodes.values()
+
+    def live_variable_analysis(self):
+        class defuse:
+            def __init__(self):
+                self.ins = set()
+                self.outs = set()
+                self.defs = set()
+                self.uses = set()
+
+        defuses: Dict[ControlFlowGraphNode, defuse] = dict(map(lambda n: (n, set()), self.nodes()))
+        worklist: List[ControlFlowGraphNode] = list(self.nodes())
+        done = False
+        
+        while any(worklist):
+            node = worklist.pop()
+            assert node
+
+            du = defuses[node]
+            ins_pre = set(du.ins)
+            outs_pre = set(du.outs)
+
+            if done:
+                break
 
     def pretty_print(self):
         worklist = [self._entry_node]
@@ -177,9 +213,13 @@ class ControlFlowGraph:
             else:
                 worklist.extend(self.succs(node))
 
+            node.block.update_def_use()
+
             print(f"  Block: {node.label}")
             print(f"  Preds: {', '.join(map(lambda n: n.label, self.preds(node)))}")
             print(f"  Succs: {', '.join(map(lambda n: n.label, self.succs(node)))}")
+            print(f"   Defs: {', '.join(map(lambda a: str(a), node.block.defs))}")
+            print(f"   Uses: {', '.join(map(lambda a: str(a), node.block.uses))}")
             print(f"  Ops:")
             for op in node.block.ops:
                 print(f"    {str(op)}")
@@ -221,7 +261,7 @@ def build_control_flow_graph(func: GDScriptFunction):
 
         block.append_op(op)
 
-        if isinstance(op, (ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+        if isinstance(op, (EndGDScriptOp, ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             new_block_flag = True
 
     for node in nodes.values():
@@ -231,6 +271,7 @@ def build_control_flow_graph(func: GDScriptFunction):
     cfg = ControlFlowGraph()
     cfg.add_edge(Edge(entry_node, nodes[0]))
     for node in nodes.values():
+        cfg.add_node(node)
         last_op = node.block.last_op
         if isinstance(last_op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             cfg.add_edge(Edge(node, nodes[last_op.branch]))
@@ -242,6 +283,18 @@ def build_control_flow_graph(func: GDScriptFunction):
     cfg.add_node(entry_node)
     cfg._exit_node = exit_node
     cfg.add_node(exit_node)
+
+    # Prune non-reachable nodes
+    remove_nodes = []
+    for node in cfg.nodes():
+        if node is not cfg.entry_node and not any(cfg.preds(node)):
+            edges = cfg.back_edges(node)
+            for edge in edges:
+                cfg.remove_edge(edge)
+            remove_nodes.append(node)
+
+    for node in remove_nodes:
+        cfg.remove_node(node)
 
     return cfg
 

@@ -3,11 +3,12 @@ from typing import Set, List, Dict, Optional, Iterable, Tuple, cast
 from gd2c.controlflow import BasicBlock, ControlFlowGraph, ControlFlowGraphNode
 
 class DomTreeNode:
-    def __init__(self, block: BasicBlock, dfs: int):
+    def __init__(self, block: BasicBlock, dfs: int, label: Optional[str] = None):
         self._block = block
         self._children: Set['DomTreeNode'] = set()
         self._parent: Optional['DomTreeNode'] = self
         self.dfs_number = dfs
+        self.label = label or str(dfs)
 
     def add_child(self, node: 'DomTreeNode'):
         node._parent = self
@@ -31,12 +32,12 @@ class DomTree:
 
     def pretty_print(self):
         def iterate(node, depth):
-            print(f"{''.ljust(depth)}{node.dfs_number}")
+            print(f"{''.ljust(depth)}{node.dfs_number} '{node.label}'")
             for child in node.children():
                 if child is not node:
                     iterate(child, depth + 1)
                 else:
-                    print(f"{''.ljust(depth + 1)}{child.dfs_number}")
+                    print(f"{''.ljust(depth + 1)}{child.dfs_number} '{child.label}'")
 
         iterate(self._root, 0)
 
@@ -88,7 +89,7 @@ def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode
             reachable[n].dom = dfs
 
 def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
-    nodes = dict(map(lambda n: (n.node, DomTreeNode(n.node.block, n.dfs)), reachable.values()))
+    nodes = dict(map(lambda n: (n.node, DomTreeNode(n.node.block, n.dfs, n.node.label)), reachable.values()))
     dfs = dict(map(lambda nn: (nn.dfs_number, nn), nodes.values()))
 
     for nnn in reachable.values():
