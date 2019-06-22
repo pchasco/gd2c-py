@@ -179,6 +179,14 @@ class GDScriptAddress:
     def __hash__(self):
         return hash(self._address)
 
+    @staticmethod
+    def create(mode: int, offset: int) -> GDScriptAddress:
+        return GDScriptAddress((mode << GDScriptAddress.AddressBits) | (offset & GDScriptAddress.AddressMask))
+
+    @staticmethod
+    def calc_address(mode: int, offset: int) -> int:
+        return (mode << GDScriptAddress.AddressBits) | (offset & GDScriptAddress.AddressMask)
+
 GDScriptAddress.Zero = GDScriptAddress(0)
 
 class GDScriptOp:

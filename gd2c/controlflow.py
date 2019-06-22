@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet
-from gd2c.bytecode import GDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
+from gd2c.bytecode import GDScriptAddressMode, GDScriptAddress, GDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.gdscriptclass import GDScriptFunction
 
 class BasicBlock:
@@ -8,7 +8,7 @@ class BasicBlock:
         self._ops: List[GDScriptOp] = []
         self._locked = False
         self._defs: FrozenSet[int] = frozenset()
-        self._users: FrozenSet[int] = frozenset()
+        self._uses: FrozenSet[int] = frozenset()
 
     @property
     def ops(self) -> Iterable[GDScriptOp]:
@@ -24,10 +24,18 @@ class BasicBlock:
     @property
     def defs(self) -> FrozenSet[int]:
         return self._defs
+
+    @defs.setter
+    def defs(self, value: Iterable[int]):
+        self._defs = frozenset(value)
     
     @property
     def uses(self) -> FrozenSet[int]:
         return self._uses
+
+    @uses.setter
+    def uses(self, value: Iterable[int]):
+        self._uses = frozenset(value)
 
     @property
     def locked(self):
@@ -89,7 +97,8 @@ class ControlFlowGraphNode:
     def __init__(self, label: str, block: BasicBlock):
         self._block = block
         self._label = label
-        self._live: Set[int] = set()
+        self._ins: FrozenSet[int] = frozenset([])
+        self._outs: FrozenSet[int] = frozenset([])
 
     @property
     def block(self):
@@ -98,6 +107,22 @@ class ControlFlowGraphNode:
     @property
     def label(self):
         return self._label
+
+    @property
+    def ins(self) -> FrozenSet[int]:
+        return self._ins
+    
+    @ins.setter
+    def ins(self, value: Iterable[int]):
+        self._ins = frozenset(value)
+
+    @property
+    def outs(self) -> FrozenSet[int]:
+        return self._outs
+    
+    @outs.setter
+    def outs(self, value: Iterable[int]):
+        self._outs = frozenset(value)  
 
 class Edge:
     def __init__(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode):
@@ -170,27 +195,69 @@ class ControlFlowGraph:
         return self._nodes.values()
 
     def live_variable_analysis(self):
-        class defuse:
+        class def_use:
             def __init__(self):
                 self.ins = set()
                 self.outs = set()
                 self.defs = set()
                 self.uses = set()
 
-        defuses: Dict[ControlFlowGraphNode, defuse] = dict(map(lambda n: (n, set()), self.nodes()))
-        worklist: List[ControlFlowGraphNode] = list(self.nodes())
-        done = False
-        
-        while any(worklist):
-            node = worklist.pop()
-            assert node
+        defuses = {}
+        for node in self.nodes():
+            # update def-use
+            # make exception for entry node because it has been
+            # populated with all members, constants and parameters.
+            # update_def_use will clear them as there is no code 
+            # in the entry node
+            # TODO: create phi instructions or something to create defs for constants
+            if not node is self.entry_node:
+                node.block.update_def_use()
 
-            du = defuses[node]
-            ins_pre = set(du.ins)
-            outs_pre = set(du.outs)
+            du = def_use()
+            du.defs = node.block.defs
+            du.ins = set(node.block.uses)
+            defuses[node] = du
+        
+        worklist: List[ControlFlowGraphNode] = [self.exit_node]
+        done = True
+        
+        # propagate live variables througout the CFG. May take
+        # multiple iterations. We're done when we complete an
+        # iteration that makes no changes
+        while True:
+            done = True
+            visited: Set[ControlFlowGraphNode] = set()
+
+            while any(worklist):
+                node = worklist.pop()
+                assert node
+                if node in visited:
+                    continue
+
+                du = defuses[node]
+                pre_ins_count = len(du.ins)
+                pre_outs_count = len(du.outs)
+
+                for succ in self.succs(node):
+                    du.outs.update(defuses[succ].ins)
+                du.ins.update(du.outs - du.defs)
+
+                # see if we made any changes. We only need to check counts on
+                # sets because liveness analysis only ever grows the sets.
+                if len(du.outs) > pre_outs_count or len(du.ins) > pre_ins_count:
+                    done = False
+
+                visited.add(node)
+                worklist.extend(self.preds(node))
 
             if done:
                 break
+
+        # update cfg nodes with results of liveness analysis
+        for node in self.nodes():
+            du = defuses[node]
+            node.ins = du.ins
+            node.outs = du.outs
 
     def pretty_print(self):
         worklist = [self._entry_node]
@@ -213,13 +280,13 @@ class ControlFlowGraph:
             else:
                 worklist.extend(self.succs(node))
 
-            node.block.update_def_use()
-
             print(f"  Block: {node.label}")
             print(f"  Preds: {', '.join(map(lambda n: n.label, self.preds(node)))}")
             print(f"  Succs: {', '.join(map(lambda n: n.label, self.succs(node)))}")
             print(f"   Defs: {', '.join(map(lambda a: str(a), node.block.defs))}")
             print(f"   Uses: {', '.join(map(lambda a: str(a), node.block.uses))}")
+            print(f"    Ins: {', '.join(map(lambda a: str(a), node.ins))}")
+            print(f"   Outs: {', '.join(map(lambda a: str(a), node.outs))}")
             print(f"  Ops:")
             for op in node.block.ops:
                 print(f"    {str(op)}")
@@ -231,8 +298,16 @@ class ControlFlowGraph:
 
 def build_control_flow_graph(func: GDScriptFunction):
     nodes: Dict[int, ControlFlowGraphNode] = {}
+    
     entry_node = ControlFlowGraphNode('__entry', BasicBlock())
+    #TODO: Also need to include class members, constants, and global constants as in vars
+    #      We can add only those that are used anywhere in the function
+    defs = set(map(lambda c: GDScriptAddress.calc_address(GDScriptAddressMode.LocalConstant, c.index), func.constants()))
+    # Include function parameters. GDScript uses the StackVariable addressing mode to address them.
+    defs.update(map(lambda p: GDScriptAddress.calc_address(GDScriptAddressMode.StackVariable, p.index), func.parameters()))
+    entry_node.block.defs = defs
     entry_node.block.ops.append(JumpGDScriptOp(0))
+
     exit_node = ControlFlowGraphNode('__exit', BasicBlock())
 
     # Identify jump targets which always begin new blocks

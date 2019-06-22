@@ -20,11 +20,13 @@ for cls in project.classes():
         print(f"Control Flow Graph {func.name}")
         print(f"-----------------------------------")
         cfg = build_control_flow_graph(func)
+        cfg.live_variable_analysis()
         cfg.pretty_print()
 
         tree = build_domtree_naive(cfg)
         print("-- DOMTREE ---------------------------------")
         tree.pretty_print()
+
     print("")
 
 
