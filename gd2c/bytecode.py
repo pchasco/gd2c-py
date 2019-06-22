@@ -5,189 +5,114 @@ from gd2c.variant import VariantType
 if TYPE_CHECKING:
     from gd2c.gdscriptclass import GDScriptFunction
 
-class GDScriptOpcode:
-    Operator = 0
-    ExtendsTest = 1
-    IsBuiltin = 2
-    Set = 3
-    Get = 4
-    SetNamed = 5
-    GetNamed = 6
-    SetMember = 7
-    GetMember = 8
-    Assign = 9
-    AssignTrue = 10
-    AssignFalse = 11
-    AssignTypedBuiltin = 12
-    AssignTypedNative = 13
-    AssignTypedScript = 14
-    CastToBuiltin = 15
-    CastToNative = 16
-    CastToScript = 17
-    Construct = 18
-    ConstructArray = 19
-    ConstructDictionary = 20
-    Call = 21
-    CallReturn = 22
-    CallBuiltin = 23
-    CallSelf = 24
-    CallSelfBase = 25
-    Yield = 26
-    YieldSignal = 27
-    YieldResume = 28
-    Jump = 29
-    JumpIf = 30
-    JumpIfNot = 31
-    JumpToDefaultArgument = 32
-    Return = 33
-    IterateBegin = 34
-    Iterate = 35
-    Assert = 36
-    Breakpoint = 37
-    Line = 38
-    End = 39
+OPCODE_OPERATOR = 0
+OPCODE_EXTENDSTEST = 1
+OPCODE_ISBUILTIN = 2
+OPCODE_SET = 3
+OPCODE_GET = 4
+OPCODE_SETNAMED = 5
+OPCODE_GETNAMED = 6
+OPCODE_SETMEMBER = 7
+OPCODE_GETMEMBER = 8
+OPCODE_ASSIGN = 9
+OPCODE_ASSIGNTRUE = 10
+OPCODE_ASSIGNFALSE = 11
+OPCODE_ASSIGNTYPEDBUILTIN = 12
+OPCODE_ASSIGNTYPEDNATIVE = 13
+OPCODE_ASSIGNTYPEDSCRIPT = 14
+OPCODE_CASTTOBUILTIN = 15
+OPCODE_CASTTONATIVE = 16
+OPCODE_CASTTOSCRIPT = 17
+OPCODE_CONSTRUCT = 18
+OPCODE_CONSTRUCTARRAY = 19
+OPCODE_CONSTRUCTDICTIONARY = 20
+OPCODE_CALL = 21
+OPCODE_CALLRETURN = 22
+OPCODE_CALLBUILTIN = 23
+OPCODE_CALLSELF = 24
+OPCODE_CALLSELFBASE = 25
+OPCODE_YIELD = 26
+OPCODE_YIELDSIGNAL = 27
+OPCODE_YIELDRESUME = 28
+OPCODE_JUMP = 29
+OPCODE_JUMPIF = 30
+OPCODE_JUMPIFNOT = 31
+OPCODE_JUMPTODEFAULTARGUMENT = 32
+OPCODE_RETURN = 33
+OPCODE_ITERATEBEGIN = 34
+OPCODE_ITERATE = 35
+OPCODE_ASSERT = 36
+OPCODE_BREAKPOINT = 37
+OPCODE_LINE = 38
+OPCODE_END = 39
+# The following are not defined by Godot but are special instructions
+# for the transpiler
+OPCODE_NOOP = 1000
+OPCODE_BOX = 1001
+OPCODE_DESTROY = 1002
+OPCODE_UNBOX = 1003
+OPCODE_DEFINE = 1004
 
-    # The following are not defined by Godot but are special instructions
-    # for the transpiler
-    Noop = 1000
-    Box = 1001
-    Destroy = 1002
-    Unbox = 1003
-
-class GDScriptOperator:
-    # comparison
-    Equal = 0
-    NotEqual = 1
-    Less = 2
-    LessEqual = 3
-    Greater = 4
-    GreaterEqual = 5
-    # mathematic
-    Add = 6
-    Subtract = 7
-    Multiply = 8
-    Divide = 9
-    Negate = 10
-    Positive = 11
-    Module = 12
-    StringConcat = 13
-    # bitwise
-    ShiftLeft = 14
-    ShiftRight = 15
-    BitAnd = 16
-    BitOr = 17
-    BitXor = 18
-    BitNegate = 19
-    # logic
-    And = 20
-    Or = 21
-    Xor = 22
-    Not = 23
-    # containment
-    In = 24
-    Max = 25
+# Comparison
+OPERATOR_EQUAL = 0
+OPERATOR_NOTEQUAL = 1
+OPERATOR_LESS = 2
+OPERATOR_LESSEQUAL = 3
+OPERATOR_GREATER = 4
+OPERATOR_GREATEREQUAL = 5
+# Mathematic
+OPERATOR_ADD = 6
+OPERATOR_SUBTRACT = 7
+OPERATOR_MULTIPLY = 8
+OPERATOR_DIVIDE = 9
+OPERATOR_NEGATE = 10
+OPERATOR_POSITIVE = 11
+OPERATOR_MODULE = 12
+OPERATOR_STRINGCONCAT = 13
+# Bitwise
+OPERATOR_SHIFTLEFT = 14
+OPERATOR_SHIFTRIGHT = 15
+OPERATOR_BITAND = 16
+OPERATOR_BITOR = 17
+OPERATOR_BITXOR = 18
+OPERATOR_BITNEGATE = 19
+# Logic
+OPERATOR_AND = 20
+OPERATOR_OR = 21
+OPERATOR_XOR = 22
+OPERATOR_NOT = 23
+# Containment
+OPERATOR_IN = 24
+OPERATOR_MAX = 25
 
 OperatorToken = {
-    GDScriptOperator.Equal: "==",
-    GDScriptOperator.NotEqual: "!=",
-    GDScriptOperator.Less: "<",
-    GDScriptOperator.LessEqual: "<=",
-    GDScriptOperator.Greater: ">",
-    GDScriptOperator.GreaterEqual: ">=",
-    GDScriptOperator.Add: "+",
-    GDScriptOperator.Subtract: "-",
-    GDScriptOperator.Multiply: "*",
-    GDScriptOperator.Divide: "/",
-    GDScriptOperator.Negate: "-",
-    GDScriptOperator.Positive: "+",
-    GDScriptOperator.Module: "%",
-    GDScriptOperator.StringConcat: "+",
-    GDScriptOperator.ShiftLeft: "<<",
-    GDScriptOperator.ShiftRight: ">>",
-    GDScriptOperator.BitAnd: "&",
-    GDScriptOperator.BitOr: "|",
-    GDScriptOperator.BitXor: "!",
-    GDScriptOperator.BitNegate: "~",
-    GDScriptOperator.And: "&&",
-    GDScriptOperator.Or: "||",
-    GDScriptOperator.Xor: "^",
-    GDScriptOperator.Not: "!",
-    GDScriptOperator.In: "in",
-    GDScriptOperator.Max: "max"
+    OPERATOR_EQUAL: "==",
+    OPERATOR_NOTEQUAL: "!=",
+    OPERATOR_LESS: "<",
+    OPERATOR_LESSEQUAL: "<=",
+    OPERATOR_GREATER: ">",
+    OPERATOR_GREATEREQUAL: ">=",
+    OPERATOR_ADD: "+",
+    OPERATOR_SUBTRACT: "-",
+    OPERATOR_MULTIPLY: "*",
+    OPERATOR_DIVIDE: "/",
+    OPERATOR_NEGATE: "-",
+    OPERATOR_POSITIVE: "+",
+    OPERATOR_MODULE: "%",
+    OPERATOR_STRINGCONCAT: "+",
+    OPERATOR_SHIFTLEFT: "<<",
+    OPERATOR_SHIFTRIGHT: ">>",
+    OPERATOR_BITAND: "&",
+    OPERATOR_BITOR: "|",
+    OPERATOR_BITXOR: "^",
+    OPERATOR_BITNEGATE: "~",
+    OPERATOR_AND: "&&",
+    OPERATOR_OR: "||",
+    OPERATOR_XOR: "^",
+    OPERATOR_NOT: "!",
+    OPERATOR_IN: "in",
+    OPERATOR_MAX: "max"
 }
-
-class GDScriptAddressMode:
-    Self = 0
-    Class = 1
-    Member = 2
-    ClassConstant = 3
-    LocalConstant = 4
-    Stack = 5
-    StackVariable = 6
-    Global = 7
-    NamedGlobal = 8
-    Nil = 9
-
-    # Function parameter not defined by GDSCRIPT
-    Parameter = 14
-    Temporary = 15
-    SetterValueParameter = 16
-
-AddressModePrefix = {
-    GDScriptAddressMode.Self: "self",
-    GDScriptAddressMode.Class: "class",
-    GDScriptAddressMode.Member: "memb",
-    GDScriptAddressMode.ClassConstant: "clco",
-    GDScriptAddressMode.LocalConstant: "loco",
-    GDScriptAddressMode.Stack: "stac",
-    GDScriptAddressMode.StackVariable: "stva",
-    GDScriptAddressMode.Global: "glob",
-    GDScriptAddressMode.NamedGlobal: "namg",
-    GDScriptAddressMode.Nil: " nil",
-    GDScriptAddressMode.Parameter: "para",
-    GDScriptAddressMode.Temporary: "temp",
-    GDScriptAddressMode.SetterValueParameter: "setv"
-}
-
-class GDScriptAddress:
-    Zero: ClassVar['GDScriptAddress'] = cast('GDScriptAddress', None)
-    AddressBits: ClassVar[int] = 24
-    AddressMask: ClassVar[int] = ((1 << 24) - 1)
-    AddressModeMask: ClassVar[int] = ~((1 << 24) - 1)
-
-    def __init__(self, address: int):
-        self._address = address
-
-    @property
-    def address(self):
-        return self._address
-
-    @property
-    def mode(self):
-        return (self._address & GDScriptAddress.AddressModeMask) >> GDScriptAddress.AddressBits
-
-    @property
-    def offset(self):
-        return self._address & GDScriptAddress.AddressMask
-
-    def __eq__(self, other):
-        return other and self._address == other._address
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash(self._address)
-
-    @staticmethod
-    def create(mode: int, offset: int) -> GDScriptAddress:
-        return GDScriptAddress((mode << GDScriptAddress.AddressBits) | (offset & GDScriptAddress.AddressMask))
-
-    @staticmethod
-    def calc_address(mode: int, offset: int) -> int:
-        return (mode << GDScriptAddress.AddressBits) | (offset & GDScriptAddress.AddressMask)
-
-GDScriptAddress.Zero = GDScriptAddress(0)
 
 class GDScriptOp:
     def __init__(self, opcode: int):
@@ -223,7 +148,7 @@ class GDScriptOp:
 
 class NoopGDScriptOp(GDScriptOp):
     def __init__(self):
-        super().__init__(GDScriptOpcode.Noop)
+        super().__init__(OPCODE_NOOP)
 
     def __str__(self):
         return "NOOP"
@@ -238,7 +163,7 @@ class NoopGDScriptOp(GDScriptOp):
 
 class OperatorGDScriptOp(GDScriptOp):
     def __init__(self, op: int, operand1: int, operand2: int, dest: int):
-        super().__init__(GDScriptOpcode.Operator)
+        super().__init__(OPCODE_OPERATOR)
         self.op = op
         self.dest = dest
         self.operand1 = operand1
@@ -263,7 +188,7 @@ class OperatorGDScriptOp(GDScriptOp):
 
 class SetGDScriptOp(GDScriptOp):
     def __init__(self, array_address: int, index_address: int, source_address: int):
-        super().__init__(GDScriptOpcode.Set)
+        super().__init__(OPCODE_SET)
         self.array_address = array_address
         self.index_address = index_address
         self.source_address = source_address
@@ -286,7 +211,7 @@ class SetGDScriptOp(GDScriptOp):
 
 class GetGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, array_address: int, index_address: int):
-        super().__init__(GDScriptOpcode.GetNamed)
+        super().__init__(OPCODE_GET)
         self.dest = dest
         self.array_address = array_address
         self.index_address = index_address
@@ -309,7 +234,7 @@ class GetGDScriptOp(GDScriptOp):
 
 class SetNamedGDScriptOp(GDScriptOp):
     def __init__(self, receiver: int, name_index: int, source: int):
-        super().__init__(GDScriptOpcode.SetNamed)
+        super().__init__(OPCODE_SETNAMED)
         self.receiver = receiver
         self.name_index = name_index
         self.source = source
@@ -332,7 +257,7 @@ class SetNamedGDScriptOp(GDScriptOp):
 
 class GetNamedGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, receiver: int, name_index: int):
-        super().__init__(GDScriptOpcode.Set)
+        super().__init__(OPCODE_GETNAMED)
         self.receiver = receiver
         self.name_index = name_index
         self.dest = dest
@@ -355,7 +280,7 @@ class GetNamedGDScriptOp(GDScriptOp):
 
 class SetMemberGDScriptOp(GDScriptOp):
     def __init__(self, name_index: int, source: int):
-        super().__init__(GDScriptOpcode.SetMember)
+        super().__init__(OPCODE_SETMEMBER)
         self.name_index = name_index
         self.source = source
         self._reads = set([source])
@@ -375,7 +300,7 @@ class SetMemberGDScriptOp(GDScriptOp):
 
 class GetMemberGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, name_index: int):
-        super().__init__(GDScriptOpcode.GetMember)
+        super().__init__(OPCODE_GETMEMBER)
         self.dest = dest
         self.name_index = name_index
         self._writes = set([dest])
@@ -395,7 +320,7 @@ class GetMemberGDScriptOp(GDScriptOp):
 
 class AssignGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, source: int):
-        super().__init__(GDScriptOpcode.Assign)
+        super().__init__(OPCODE_ASSIGN)
         self.dest = dest
         self.source = source
         self._writes = set([dest])
@@ -416,7 +341,7 @@ class AssignGDScriptOp(GDScriptOp):
 
 class AssignTrueGDScriptOp(GDScriptOp):
     def __init__(self, dest: int):
-        super().__init__(GDScriptOpcode.AssignTrue)
+        super().__init__(OPCODE_ASSIGNTRUE)
         self.dest = dest
         self._writes = set([dest])
 
@@ -433,7 +358,7 @@ class AssignTrueGDScriptOp(GDScriptOp):
 
 class AssignFalseGDScriptOp(GDScriptOp):
     def __init__(self, dest: int):
-        super().__init__(GDScriptOpcode.AssignFalse)
+        super().__init__(OPCODE_ASSIGNFALSE)
         self.dest = dest
         self._writes = set([dest])
 
@@ -450,7 +375,7 @@ class AssignFalseGDScriptOp(GDScriptOp):
 
 class AssignTypedBuiltinGDScriptOp(GDScriptOp):
     def __init__(self, vtype: int, dest: int, source: int):
-        super().__init__(GDScriptOpcode.AssignTypedBuiltin)
+        super().__init__(OPCODE_ASSIGNTYPEDBUILTIN)
         self.vtype = VariantType.get(vtype)
         self.dest = dest
         self.source = source
@@ -473,7 +398,7 @@ class AssignTypedBuiltinGDScriptOp(GDScriptOp):
 
 class ReturnGDScriptOp(GDScriptOp):
     def __init__(self, source: int):
-        super().__init__(GDScriptOpcode.Return)
+        super().__init__(OPCODE_RETURN)
         self.source = source
         self._reads = set([source])
 
@@ -490,7 +415,7 @@ class ReturnGDScriptOp(GDScriptOp):
 
 class ConstructGDScriptOp(GDScriptOp):
     def __init__(self, vtype: int, arg_count: int, args: Iterable[int], dest: int):
-        super().__init__(GDScriptOpcode.Construct)
+        super().__init__(OPCODE_CONSTRUCT)
         self.vtype = VariantType.get(vtype)
         self.arg_count = arg_count
         self.args = list(args)[:]
@@ -516,7 +441,7 @@ class ConstructGDScriptOp(GDScriptOp):
 
 class ConstructArrayGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, item_count: int, item_addresses: Iterable[int]):
-        super().__init__(GDScriptOpcode.ConstructArray)
+        super().__init__(OPCODE_CONSTRUCTARRAY)
         self.item_count = item_count
         self.item_addresses = list(item_addresses)[:]
         self.dest = dest
@@ -540,7 +465,7 @@ class ConstructArrayGDScriptOp(GDScriptOp):
 
 class ConstructDictionaryGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, item_count: int, key_addresses: Iterable[int], value_addresses: Iterable[int]):
-        super().__init__(GDScriptOpcode.ConstructDictionary)
+        super().__init__(OPCODE_CONSTRUCTDICTIONARY)
         self.item_count = item_count
         self.key_addresses = list(key_addresses)[:]
         self.value_addresses = list(value_addresses)[:]
@@ -573,7 +498,7 @@ class ConstructDictionaryGDScriptOp(GDScriptOp):
 
 class CallReturnGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, receiver: int, arg_count: int, name_index: int, args: Iterable[int]):
-        super().__init__(GDScriptOpcode.CallReturn)
+        super().__init__(OPCODE_CALLRETURN)
         self.dest = dest
         self.arg_count = arg_count
         self.name_index = name_index
@@ -601,7 +526,7 @@ class CallReturnGDScriptOp(GDScriptOp):
 
 class CallGDScriptOp(GDScriptOp):
     def __init__(self, receiver: int, arg_count: int, name_index: int, args: Iterable[int]):
-        super().__init__(GDScriptOpcode.CallReturn)
+        super().__init__(OPCODE_CALL)
         self.arg_count = arg_count
         self.name_index = name_index
         self.args = list(args)[:]
@@ -627,7 +552,7 @@ class CallGDScriptOp(GDScriptOp):
 
 class CallSelfBaseGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, arg_count: int, name_index: int, args: Iterable[int]):
-        super().__init__(GDScriptOpcode.CallSelfBase)
+        super().__init__(OPCODE_CALLSELFBASE)
         self.dest = dest
         self.arg_count = arg_count
         self.name_index = name_index
@@ -652,7 +577,7 @@ class CallSelfBaseGDScriptOp(GDScriptOp):
 
 class CallBuiltinGDScriptOp(GDScriptOp):
     def __init__(self, dest: int, function_index: int, arg_count: int, args: Iterable[int]):
-        super().__init__(GDScriptOpcode.CallBuiltin)
+        super().__init__(OPCODE_CALLBUILTIN)
         self.dest = dest
         self.arg_count = arg_count
         self.function_index = function_index
@@ -678,7 +603,7 @@ class CallBuiltinGDScriptOp(GDScriptOp):
 
 class JumpGDScriptOp(GDScriptOp):
     def __init__(self, branch: int):
-        super().__init__(GDScriptOpcode.Jump)
+        super().__init__(OPCODE_JUMP)
         self.branch = branch
         self.fallthrough = branch
 
@@ -695,7 +620,7 @@ class JumpGDScriptOp(GDScriptOp):
 
 class JumpIfGDScriptOp(GDScriptOp):
     def __init__(self, branch: int, source: int, fallthrough: int):
-        super().__init__(GDScriptOpcode.JumpIf)
+        super().__init__(OPCODE_JUMPIF)
         self.branch = branch
         self.source = source
         self.fallthrough = fallthrough
@@ -713,7 +638,7 @@ class JumpIfGDScriptOp(GDScriptOp):
 
 class JumpIfNotGDScriptOp(GDScriptOp):
     def __init__(self, branch: int, source: int, fallthrough: int):
-        super().__init__(GDScriptOpcode.JumpIfNot)
+        super().__init__(OPCODE_JUMPIFNOT)
         self.branch = branch
         self.fallthrough = fallthrough
         self.source = source
@@ -731,7 +656,7 @@ class JumpIfNotGDScriptOp(GDScriptOp):
 
 class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
     def __init__(self, jump_table: Iterable[int]):
-        super().__init__(GDScriptOpcode.JumpToDefaultArgument)
+        super().__init__(OPCODE_JUMPTODEFAULTARGUMENT)
         self.jump_table = list(jump_table)[:]
 
     def __str__(self):
@@ -747,7 +672,7 @@ class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
 
 class LineGDScriptOp(GDScriptOp):
     def __init__(self, line_number: int):
-        super().__init__(GDScriptOpcode.Line)
+        super().__init__(OPCODE_LINE)
         self.line_number = line_number
 
     def __str__(self):
@@ -763,7 +688,7 @@ class LineGDScriptOp(GDScriptOp):
 
 class EndGDScriptOp(GDScriptOp):
     def __init__(self):
-        super().__init__(GDScriptOpcode.End)
+        super().__init__(OPCODE_END)
 
     def __str__(self):
         return f"END"
@@ -776,54 +701,71 @@ class EndGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'EndGDScriptOp':
         return EndGDScriptOp()
 
+class PseudoGDScriptOp(GDScriptOp):
+    def __init__(self, opcode: int):
+        super().__init__(opcode)
+
+    @property
+    def stride(self) -> int:
+        raise Exception("Pseudo-ops have no stride as they do not have a bytecode representation")
+
+
+class DefineGDScriptOp(PseudoGDScriptOp):
+    def __init__(self, address: int):
+        super().__init__(OPCODE_DEFINE)
+        self.address = address
+        self._writes = set([address])
+
+    def __str__(self):
+        return f"DEFINE {self.address}"
+
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
-    GDScriptOpcode.Operator: OperatorGDScriptOp.extract,
-    GDScriptOpcode.ExtendsTest: None,
-    GDScriptOpcode.IsBuiltin: None,
-    GDScriptOpcode.Set: SetGDScriptOp.extract,
-    GDScriptOpcode.Get: GetGDScriptOp.extract,
-    GDScriptOpcode.SetNamed: SetNamedGDScriptOp.extract,
-    GDScriptOpcode.GetNamed: GetNamedGDScriptOp.extract,
-    GDScriptOpcode.SetMember: SetMemberGDScriptOp.extract,
-    GDScriptOpcode.GetMember: GetMemberGDScriptOp.extract,
-    GDScriptOpcode.Assign: AssignGDScriptOp.extract,
-    GDScriptOpcode.AssignTrue: AssignTrueGDScriptOp.extract,
-    GDScriptOpcode.AssignFalse: AssignFalseGDScriptOp.extract,
-    GDScriptOpcode.AssignTypedBuiltin: AssignTypedBuiltinGDScriptOp.extract,
-    GDScriptOpcode.AssignTypedNative: None,
-    GDScriptOpcode.AssignTypedScript: None,
-    GDScriptOpcode.CastToBuiltin: None,
-    GDScriptOpcode.CastToNative: None,
-    GDScriptOpcode.CastToScript: None,
-    GDScriptOpcode.Construct: ConstructGDScriptOp.extract,
-    GDScriptOpcode.ConstructArray: ConstructArrayGDScriptOp.extract,
-    GDScriptOpcode.ConstructDictionary: ConstructDictionaryGDScriptOp.extract,
-    GDScriptOpcode.Call: CallGDScriptOp.extract,
-    GDScriptOpcode.CallReturn: CallReturnGDScriptOp.extract,
-    GDScriptOpcode.CallBuiltin: CallBuiltinGDScriptOp.extract,
-    GDScriptOpcode.CallSelf: CallSelfBaseGDScriptOp.extract,
-    GDScriptOpcode.CallSelfBase: CallSelfBaseGDScriptOp.extract,
-    GDScriptOpcode.Yield: None,
-    GDScriptOpcode.YieldSignal: None,
-    GDScriptOpcode.YieldResume: None,
-    GDScriptOpcode.Jump: JumpGDScriptOp.extract,
-    GDScriptOpcode.JumpIf: JumpIfGDScriptOp.extract,
-    GDScriptOpcode.JumpIfNot: JumpIfNotGDScriptOp.extract,
-    GDScriptOpcode.JumpToDefaultArgument: JumpToDefaultArgumentGDScriptOp.extract,
-    GDScriptOpcode.Return: ReturnGDScriptOp.extract,
-    GDScriptOpcode.IterateBegin: None,
-    GDScriptOpcode.Iterate: None,
-    GDScriptOpcode.Assert: None,
-    GDScriptOpcode.Breakpoint: None,
-    GDScriptOpcode.Line: LineGDScriptOp.extract,
-    GDScriptOpcode.End: EndGDScriptOp.extract,
+    OPCODE_OPERATOR: OperatorGDScriptOp.extract,
+    OPCODE_EXTENDSTEST: None,
+    OPCODE_ISBUILTIN: None,
+    OPCODE_SET: SetGDScriptOp.extract,
+    OPCODE_GET: GetGDScriptOp.extract,
+    OPCODE_SETNAMED: SetNamedGDScriptOp.extract,
+    OPCODE_GETNAMED: GetNamedGDScriptOp.extract,
+    OPCODE_SETMEMBER: SetMemberGDScriptOp.extract,
+    OPCODE_GETMEMBER: GetMemberGDScriptOp.extract,
+    OPCODE_ASSIGN: AssignGDScriptOp.extract,
+    OPCODE_ASSIGNTRUE: AssignTrueGDScriptOp.extract,
+    OPCODE_ASSIGNFALSE: AssignFalseGDScriptOp.extract,
+    OPCODE_ASSIGNTYPEDBUILTIN: AssignTypedBuiltinGDScriptOp.extract,
+    OPCODE_ASSIGNTYPEDNATIVE: None,
+    OPCODE_ASSIGNTYPEDSCRIPT: None,
+    OPCODE_CASTTOBUILTIN: None,
+    OPCODE_CASTTONATIVE: None,
+    OPCODE_CASTTOSCRIPT: None,
+    OPCODE_CONSTRUCT: ConstructGDScriptOp.extract,
+    OPCODE_CONSTRUCTARRAY: ConstructArrayGDScriptOp.extract,
+    OPCODE_CONSTRUCTDICTIONARY: ConstructDictionaryGDScriptOp.extract,
+    OPCODE_CALL: CallGDScriptOp.extract,
+    OPCODE_CALLRETURN: CallReturnGDScriptOp.extract,
+    OPCODE_CALLBUILTIN: CallBuiltinGDScriptOp.extract,
+    OPCODE_CALLSELFBASE: CallSelfBaseGDScriptOp.extract,
+    OPCODE_YIELD: None,
+    OPCODE_YIELDSIGNAL: None,
+    OPCODE_YIELDRESUME: None,
+    OPCODE_JUMP: JumpGDScriptOp.extract,
+    OPCODE_JUMPIF: JumpIfGDScriptOp.extract,
+    OPCODE_JUMPIFNOT: JumpIfNotGDScriptOp.extract,
+    OPCODE_JUMPTODEFAULTARGUMENT: JumpToDefaultArgumentGDScriptOp.extract,
+    OPCODE_RETURN: ReturnGDScriptOp.extract,
+    OPCODE_ITERATEBEGIN: None,
+    OPCODE_ITERATE: None,
+    OPCODE_ASSERT: None,
+    OPCODE_BREAKPOINT: None,
+    OPCODE_LINE: LineGDScriptOp.extract,
+    OPCODE_END: EndGDScriptOp.extract,
 
     # The following are not defined by Godot but are special instructions
     # for the transpiler
-    GDScriptOpcode.Noop: None,
-    GDScriptOpcode.Box: None,
-    GDScriptOpcode.Destroy: None,
-    GDScriptOpcode.Unbox: None  
+    OPCODE_NOOP: None,
+    OPCODE_BOX: None,
+    OPCODE_DESTROY: None,
+    OPCODE_UNBOX: None  
 }
 
 def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> GDScriptOp:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet
-from gd2c.bytecode import GDScriptAddressMode, GDScriptAddress, GDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
+from gd2c.bytecode import GDScriptOp, DefineGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
+from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
 
 class BasicBlock:
@@ -204,14 +205,7 @@ class ControlFlowGraph:
 
         defuses = {}
         for node in self.nodes():
-            # update def-use
-            # make exception for entry node because it has been
-            # populated with all members, constants and parameters.
-            # update_def_use will clear them as there is no code 
-            # in the entry node
-            # TODO: create phi instructions or something to create defs for constants
-            if not node is self.entry_node:
-                node.block.update_def_use()
+            node.block.update_def_use()
 
             du = def_use()
             du.defs = node.block.defs
@@ -299,13 +293,12 @@ class ControlFlowGraph:
 def build_control_flow_graph(func: GDScriptFunction):
     nodes: Dict[int, ControlFlowGraphNode] = {}
     
+    # Build entry node.
     entry_node = ControlFlowGraphNode('__entry', BasicBlock())
-    #TODO: Also need to include class members, constants, and global constants as in vars
-    #      We can add only those that are used anywhere in the function
-    defs = set(map(lambda c: GDScriptAddress.calc_address(GDScriptAddressMode.LocalConstant, c.index), func.constants()))
-    # Include function parameters. GDScript uses the StackVariable addressing mode to address them.
-    defs.update(map(lambda p: GDScriptAddress.calc_address(GDScriptAddressMode.StackVariable, p.index), func.parameters()))
-    entry_node.block.defs = defs
+    for c in func.constants():
+        entry_node.block.append_op(DefineGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_LOCALCONSTANT, c.index)))
+    for p in func.parameters():
+        entry_node.block.append_op(DefineGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, p.index)))
     entry_node.block.ops.append(JumpGDScriptOp(0))
 
     exit_node = ControlFlowGraphNode('__exit', BasicBlock())
