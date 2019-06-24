@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Set, List, Dict, Optional, Iterable, Tuple, cast
+from typing import Set, List, Dict, Optional, Iterable, Tuple, cast, FrozenSet
 from gd2c.controlflow import BasicBlock, ControlFlowGraph, ControlFlowGraphNode
 
 class DomTreeNode:
@@ -25,6 +25,7 @@ class DomTree:
     def __init__(self, root: DomTreeNode, nodes: Iterable[DomTreeNode]):
         self._root = root
         self._nodes = dict(map(lambda n: (n._block, n), nodes))
+        self._frontiers: Dict[str, FrozenSet[DomTreeNode]] = {}
 
     @property
     def root(self):
@@ -40,6 +41,17 @@ class DomTree:
                     print(f"{''.ljust(depth + 1)}{child.dfs_number} '{child.label}'")
 
         iterate(self._root, 0)
+
+    def calc_dominance_frontier(self, cfg: ControlFlowGraph, node: ControlFlowGraphNode) -> FrozenSet[DomTreeNode]:
+        frontier = self._frontiers.get(node.label, None)
+        if frontier:
+            return frontier
+
+        df: Set[DomTreeNode] = set([])
+        preds = cfg.preds(node)
+
+
+
 
 
 class Temp:
