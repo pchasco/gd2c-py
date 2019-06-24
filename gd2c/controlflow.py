@@ -147,6 +147,7 @@ class Edge:
 class ControlFlowGraph:
     def __init__(self):
         self._nodes: Dict[str, ControlFlowGraphNode] = {}
+        self._blocks: Dict[BasicBlock, ControlFlowGraphNode] = {}
         self._edges: Dict[Tuple[ControlFlowGraphNode, ControlFlowGraphNode], Edge] = {}
         self._entry_node: Optional[ControlFlowGraphNode] = None
         self._exit_node: Optional[ControlFlowGraphNode] = None
@@ -159,6 +160,7 @@ class ControlFlowGraph:
 
     def add_node(self, node: ControlFlowGraphNode):
         self._nodes[node.label] = node
+        self._blocks[node.block] = node
 
     def find_edge(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode) -> Optional[Edge]:
         return self._edges.get((source, dest), None)
@@ -183,6 +185,7 @@ class ControlFlowGraph:
             raise Exception("Cannot delete node with edges. Remove and resolve edges first.")
 
         del self._nodes[node.label]
+        del self._blocks[node.block]
 
     @property
     def entry_node(self) -> Optional[ControlFlowGraphNode]:
@@ -194,6 +197,14 @@ class ControlFlowGraph:
 
     def nodes(self) -> Iterable[ControlFlowGraphNode]:
         return self._nodes.values()
+
+    def node(self, what: Union[str, BasicBlock]) -> Optional[ControlFlowGraphNode]:
+        if isinstance(what, str):
+            return self._nodes.get(what, None)
+        elif isinstance(what, BasicBlock):
+            return self._blocks.get(what, None)
+
+        raise Exception('what must be str or BasicBlock')
 
     def live_variable_analysis(self):
         class def_use:
@@ -288,7 +299,6 @@ class ControlFlowGraph:
             print("")
         
         print("")
-
 
 def build_control_flow_graph(func: GDScriptFunction):
     nodes: Dict[int, ControlFlowGraphNode] = {}

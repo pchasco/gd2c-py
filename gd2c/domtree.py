@@ -22,10 +22,14 @@ class DomTreeNode:
         return self._children
 
 class DomTree:
-    def __init__(self, root: DomTreeNode, nodes: Iterable[DomTreeNode]):
+    def __init__(self, cfg: ControlFlowGraph, root: DomTreeNode, nodes: Iterable[DomTreeNode]):
         self._root = root
-        self._nodes = dict(map(lambda n: (n._block, n), nodes))
-        self._frontiers: Dict[str, FrozenSet[DomTreeNode]] = {}
+        self._nodes: Dict[BasicBlock, DomTreeNode] = dict(map(lambda n: (n._block, n), nodes))
+        self._frontiers: Dict[BasicBlock, FrozenSet[DomTreeNode]] = {}
+        self._cfg = cfg
+
+        # TODO: Not sure about this in the constructor, but domtree not valid without it
+        self.calc_dominance_frontiers()
 
     @property
     def root(self):
@@ -33,26 +37,32 @@ class DomTree:
 
     def pretty_print(self):
         def iterate(node, depth):
-            print(f"{''.ljust(depth)}{node.dfs_number} '{node.label}'")
+            df = self._frontiers[node._block]
+            print(f"{''.ljust(depth)}{node.dfs_number} '{node.label}' Frontiers: {', '.join(list(map(lambda it: it.label, self._frontiers[node._block])))}")
             for child in node.children():
                 if child is not node:
                     iterate(child, depth + 1)
                 else:
-                    print(f"{''.ljust(depth + 1)}{child.dfs_number} '{child.label}'")
+                    print(f"{''.ljust(depth + 1)}{child.dfs_number} '{child.label}' Frontiers: {', '.join(list(map(lambda it: it.label, self._frontiers[child._block])))}")
 
         iterate(self._root, 0)
 
-    def calc_dominance_frontier(self, cfg: ControlFlowGraph, node: ControlFlowGraphNode) -> FrozenSet[DomTreeNode]:
-        frontier = self._frontiers.get(node.label, None)
-        if frontier:
-            return frontier
+    def calc_dominance_frontiers(self):
+        frontiers: Dict[BasicBlock, Set[ControlFlowGraphNode]] = {}
+        for node in self._cfg.nodes():
+            frontiers[node.block] = set([])
 
-        df: Set[DomTreeNode] = set([])
-        preds = cfg.preds(node)
+        for b in self._cfg.nodes():
+            preds = self._cfg.preds(b)
+            if len(preds) > 1:
+                for p in preds:
+                    runner = p
+                    bdom = self._nodes[b.block]
+                    while runner.block != bdom._parent._block:
+                        frontiers[runner.block].add(b)
+                        runner = self._cfg.node(self._nodes[runner._block]._parent._block)
 
-
-
-
+        self._frontiers = dict(map(lambda k: (k, frozenset(frontiers[k])), frontiers))
 
 class Temp:
     def __init__(self, node: ControlFlowGraphNode, dfs: int):
@@ -60,7 +70,6 @@ class Temp:
         self.dfs = dfs
         self.dom = -1
         self.flag = -1
-
 
 def _assign_dfs_numbers(cfg: ControlFlowGraph) -> Dict[ControlFlowGraphNode, Temp]:
     nodes: Dict[ControlFlowGraphNode, Temp] = {}
@@ -100,7 +109,7 @@ def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode
         if (n is not node) and t.flag != dfs and t.dom < 0:
             reachable[n].dom = dfs
 
-def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
+def _make_tree(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
     nodes = dict(map(lambda n: (n.node, DomTreeNode(n.node.block, n.dfs, n.node.label)), reachable.values()))
     dfs = dict(map(lambda nn: (nn.dfs_number, nn), nodes.values()))
 
@@ -109,13 +118,14 @@ def _make_tree(reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
         parent = dfs[nnn.dom]
         parent.add_child(child)
 
-    return DomTree(dfs[0], nodes.values())
+    return DomTree(cfg, dfs[0], nodes.values())
 
 def build_domtree_naive(cfg: ControlFlowGraph) -> DomTree:
     dfs_numbers = _assign_dfs_numbers(cfg)  
     for t in sorted(dfs_numbers.values(), key=lambda n: n.dfs, reverse=True):
         _mark_dominators(cfg, dfs_numbers, t.node)
     dfs_numbers[cfg.entry_node].dom = dfs_numbers[cfg.entry_node].dfs # type: ignore
-    return _make_tree(dfs_numbers)
+    
+    return _make_tree(cfg, dfs_numbers)
 
 
