@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Set, List, Dict, Optional, Iterable, Tuple, cast, FrozenSet
+from typing import Set, List, Dict, Optional, Iterable, Tuple, cast, FrozenSet, Union
 from gd2c.controlflow import BasicBlock, ControlFlowGraph, ControlFlowGraphNode
 
 class DomTreeNode:
@@ -21,6 +21,10 @@ class DomTreeNode:
     def children(self) -> Iterable['DomTreeNode']:
         return self._children
 
+    @property
+    def block(self) -> BasicBlock:
+        return self._block
+
 class DomTree:
     def __init__(self, cfg: ControlFlowGraph, root: DomTreeNode, nodes: Iterable[DomTreeNode]):
         self._root = root
@@ -30,6 +34,33 @@ class DomTree:
 
         # TODO: Not sure about this in the constructor, but domtree not valid without it
         self.calc_dominance_frontiers()
+
+    def nodes(self) -> Iterable[DomTreeNode]:
+        return self._nodes.values()
+
+    def node(self, what: Union[str, BasicBlock, DomTreeNode]) -> DomTreeNode:
+        if isinstance(what, str):
+            c = self._cfg.node(what)
+            assert c
+            return self._nodes[c.block]
+        elif isinstance(what, BasicBlock):
+            return self._nodes[what]
+        elif isinstance(what, DomTreeNode):
+            return self._nodes[what.block]
+
+        raise Exception("what must be str, BasicBlock, or DomTreeNode")        
+    
+    def frontier(self, what: Union[str, BasicBlock, DomTreeNode]) -> FrozenSet[DomTreeNode]:
+        if isinstance(what, str):
+            c = self._cfg.node(what)
+            assert c
+            return self._frontiers[c.block]
+        elif isinstance(what, BasicBlock):
+            return self._frontiers[what]
+        elif isinstance(what, DomTreeNode):
+            return self._frontiers[what.block]
+
+        raise Exception("what must be str, BasicBlock, or DomTreeNode")
 
     @property
     def root(self):

@@ -190,10 +190,16 @@ class ControlFlowGraph:
     @property
     def entry_node(self) -> Optional[ControlFlowGraphNode]:
         return self._entry_node
+    @entry_node.setter
+    def entry_node(self, value: ControlFlowGraphNode):
+        self._entry_node = value
     
     @property
     def exit_node(self) -> Optional[ControlFlowGraphNode]:
         return self._exit_node
+    @exit_node.setter
+    def exit_node(self, value: ControlFlowGraphNode):
+        self._exit_node = value
 
     def nodes(self) -> Iterable[ControlFlowGraphNode]:
         return self._nodes.values()
