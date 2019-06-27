@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Dict, Union, Optional
+from typing import Iterable, Dict, Union, Optional, Func
 from gd2c.gdscriptclass import GDScriptClass
 from gd2c.loader import JsonGDScriptLoader
 from pathlib import Path, PurePath, PurePosixPath
@@ -277,6 +277,15 @@ class Project:
 
         Project.__next_type_id += 1
         return Project.__next_type_id
+
+    def visit_classes_in_dependency_order(self, visitor: Func[[GDScriptClass, int], None]):
+        def iterate(cls, depth):
+            visitor(cls, depth)
+            for dep in [cls for cls in self._classes_by_type_id.values() if cls.root is cls]:
+                iterate(dep, depth + 1)
+
+        [iterate(cls, 0) for cls in self._classes_by_type_id.values() if not cls.base_resource_path]
+        
 
             
 

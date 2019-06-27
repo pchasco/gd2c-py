@@ -76,6 +76,7 @@ class GDScriptFunction:
         for const in self._constants.values():
             yield const
 
+    @property
     def len_constants(self):
         return len(self._constants)
 
@@ -167,6 +168,7 @@ class GDScriptClass:
     def add_global(self, glob: GDScriptGlobal):
         self._globals[glob.index] = glob
     
+    @property
     def len_globals(self) -> int:
         return len(self._globals)
 
@@ -184,6 +186,7 @@ class GDScriptClass:
         for func in self._functions.values():
             yield func
 
+    @property
     def len_functions(self) -> int:
         return len(self._functions)
 
@@ -197,6 +200,7 @@ class GDScriptClass:
         for const in self._constants.values():
             yield const
 
+    @property
     def len_constants(self) -> int:
         return len(self._constants)
 
@@ -210,12 +214,14 @@ class GDScriptClass:
         for member in self._members.values():
             yield member
 
+    @property
     def len_members(self) -> int:
         return len(self._members)
     
     def add_signal(self, signal: str):
         self._signals.add(signal)
 
+    @property
     def len_signal(self) -> int:
         return len(self._signals)
 
