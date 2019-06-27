@@ -27,7 +27,6 @@ class GDScriptClassConstant:
         self.data = data
         self.declaration = declaration
 
-
 class GDScriptMember:
     def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int]):
         self._name = name

@@ -1,134 +1,9 @@
 from __future__ import annotations
-from typing import Iterable, Dict, Union, Optional, Func
+from typing import Iterable, Dict, Union, Optional, Callable
 from gd2c.gdscriptclass import GDScriptClass
 from gd2c.loader import JsonGDScriptLoader
 from pathlib import Path, PurePath, PurePosixPath
 from os import PathLike
-
-class BuildDependencyNode:
-    def __init__(self, cls: GDScriptClass):
-        self._cls = cls
-        self._children: Dict[int, BuildDependencyNode] = {}
-
-    def find(self, what: Union[GDScriptClass, str, int]) -> Optional[BuildDependencyNode]:
-        if isinstance(what, str):
-            if what.startswith("res://"):
-                return self._find_by_resource_path(what)
-            else:
-                return self._find_by_name(what)
-        elif isinstance(what, int):
-            return self._find_by_type_id(what)
-
-        raise Exception("what must be GDScriptClass, str, or int")
-
-    def _find_by_resource_path(self, resource_path: str) -> Optional[BuildDependencyNode]:
-        if self.cls.resource_path == resource_path:
-            return self
-
-        for child in self._children.values():
-            found = child._find_by_resource_path(resource_path)
-            if found:
-                return found
-
-        return None
-
-    def _find_by_name(self, name: str) -> Optional[BuildDependencyNode]:
-        if self.cls.name == name:
-            return self
-
-        for child in self._children.values():
-            found = child._find_by_name(name)
-            if found:
-                return found
-
-        return None
-
-    def _find_by_type_id(self, type_id: int) -> Optional[BuildDependencyNode]:
-        if self.cls.type_id == type_id:
-            return self
-
-        for child in self._children.values():
-            found = child._find_by_type_id(type_id)
-            if found:
-                return found
-
-        return None
-
-    def add_child(self, node: BuildDependencyNode):
-        self._children[node.cls.type_id] = node
-
-    def get_own_child(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]) -> Optional[BuildDependencyNode]:
-        if isinstance(what, BuildDependencyNode):
-            if what in self.children:
-                return what
-            else:
-                return None
-        
-        for ch in self.children:
-            if isinstance(what, GDScriptClass):
-                if ch.cls == what:
-                    return ch
-            elif isinstance(what, str):
-                if what.startswith("res://"):
-                    if ch.cls.resource_path == what:
-                        return ch
-                elif ch.cls.name == what:
-                    return ch
-            elif isinstance(what, int):
-                if ch.cls.type_id == what:
-                    return ch
-
-        return None    
-
-    def find_parent(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]) -> Optional[BuildDependencyNode]:
-        if isinstance(what, BuildDependencyNode):
-            child = what
-            stack = [self]
-            while any(stack):
-                node = stack.pop()
-                if what in node.children:
-                    return node
-                else:
-                    stack.extend(node.children)
-
-        elif isinstance(what, GDScriptClass):
-            stack = [self]
-            while any(stack):
-                node = stack.pop()
-                if what.type_id in node._children:
-                    return node
-                else:
-                    stack.extend(node.children)
-
-        elif isinstance(what, str) or isinstance(what, int):
-            stack = [self]
-            while any(stack):
-                node = stack.pop()
-                if node.get_own_child(what):
-                    return node
-
-        return None
-
-    def remove_child(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]):
-        child = self.get_own_child(what)
-        if child:
-            del self._children[child.cls.type_id]
-
-    def find_remove(self, what: Union[BuildDependencyNode, GDScriptClass, str, int]):
-        parent = self.find_parent(what)
-        if parent:
-            parent.remove_child(what)
-
-        return None
-
-    @property
-    def cls(self) -> GDScriptClass:
-        return self._cls
-
-    @property
-    def children(self) -> Iterable[BuildDependencyNode]:
-        for child in self._children.values():
-            yield child
 
 class Project:
     __next_type_id = 0
@@ -278,13 +153,13 @@ class Project:
         Project.__next_type_id += 1
         return Project.__next_type_id
 
-    def visit_classes_in_dependency_order(self, visitor: Func[[GDScriptClass, int], None]):
+    def visit_classes_in_dependency_order(self, visitor: Callable[[GDScriptClass, int], None]):
         def iterate(cls, depth):
             visitor(cls, depth)
-            for dep in [cls for cls in self._classes_by_type_id.values() if cls.root is cls]:
+            for dep in [c for c in self._classes_by_type_id.values() if c.base is cls]:
                 iterate(dep, depth + 1)
 
-        [iterate(cls, 0) for cls in self._classes_by_type_id.values() if not cls.base_resource_path]
+        [iterate(c, 0) for c in self._classes_by_type_id.values() if not c.base_resource_path]
         
 
             
