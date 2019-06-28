@@ -100,6 +100,14 @@ class ControlFlowGraphNode:
         self._label = label
         self._ins: FrozenSet[int] = frozenset([])
         self._outs: FrozenSet[int] = frozenset([])
+        self._addr: Optional[int] = None
+    
+    @property
+    def address(self) -> Optional[int]:
+        return self._addr
+    @address.setter
+    def address(self, value: Optional[int]):
+        self._addr = value
 
     @property
     def block(self):
@@ -211,6 +219,13 @@ class ControlFlowGraph:
             return self._blocks.get(what, None)
 
         raise Exception('what must be str or BasicBlock')
+
+    def node_from_address(self, addr: int) -> Optional[ControlFlowGraphNode]:
+        for node in self._nodes.values():
+            if node.address == addr:
+                return node
+        
+        return None
 
     def live_variable_analysis(self):
         class def_use:
@@ -340,6 +355,7 @@ def build_control_flow_graph(func: GDScriptFunction):
 
             block = BasicBlock()
             node = ControlFlowGraphNode(str(ip), block)
+            node.address = ip
             nodes[ip] = node
             new_block_flag = False
 

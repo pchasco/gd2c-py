@@ -5,6 +5,7 @@ from gd2c.project import Project
 from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction
 from gd2c.targets._gdnative.function_codegen import FunctionCodegen
 from gd2c.targets._gdnative.class_codegen import ClassCodegen
+from gd2c.controlflow import ControlFlowGraph, build_control_flow_graph
 
 class FunctionContext:
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
@@ -13,6 +14,7 @@ class FunctionContext:
         self.constants_array_identifier = f"{class_context.cls.name}_{self.func.name}_constants"
         self.constants_initialized_identifier = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
         self.function_identifier = f"{class_context.cls.name}_{self.func.name}"
+        self.cfg = build_control_flow_graph(func)
 
 class VtableEntry:
     def __init__(self, func: FunctionContext):
@@ -170,4 +172,12 @@ class GDNativeCodeGen:
             """)           
     
     def _transpile_implementation(self):
-        pass
+        p = Path(self._output_path, "godotproject.c")
+        with p.open(mode="w") as impl:
+            def iterate_function(cls: GDScriptClass, depth: int):
+                class_context = self._class_contexts[cls.type_id]
+                for func_context in class_context.function_contexts:
+                    codegen = FunctionCodegen(func_context)
+                    codegen.transpile(impl)
+
+            self._project.visit_classes_in_dependency_order(iterate_function)
