@@ -619,14 +619,14 @@ class JumpGDScriptOp(GDScriptOp):
         return JumpGDScriptOp(bytecode[index + 1])
 
 class JumpIfGDScriptOp(GDScriptOp):
-    def __init__(self, branch: int, source: int, fallthrough: int):
+    def __init__(self, branch: int, condition: int, fallthrough: int):
         super().__init__(OPCODE_JUMPIF)
         self.branch = branch
-        self.source = source
+        self.condition = condition
         self.fallthrough = fallthrough
 
     def __str__(self):
-        return f"JUMPIF {self.source}? {self.branch} : {self.fallthrough}"
+        return f"JUMPIF {self.condition} ? {self.branch} : {self.fallthrough}"
 
     @property
     def stride(self) -> int:
@@ -637,14 +637,14 @@ class JumpIfGDScriptOp(GDScriptOp):
         return JumpIfGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
 
 class JumpIfNotGDScriptOp(GDScriptOp):
-    def __init__(self, branch: int, source: int, fallthrough: int):
+    def __init__(self, branch: int, condition: int, fallthrough: int):
         super().__init__(OPCODE_JUMPIFNOT)
         self.branch = branch
         self.fallthrough = fallthrough
-        self.source = source
+        self.condition = condition
 
     def __str__(self):
-        return f"JUMPIFNT {self.source}? {self.branch}"
+        return f"JUMPIFNT {self.condition} ? {self.branch}"
 
     @property
     def stride(self) -> int:

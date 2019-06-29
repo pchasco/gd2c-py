@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, IO, Set
 from gd2c.address import GDScriptAddress, ADDRESS_MODE_LOCALCONSTANT
 from gd2c.variant import VariantType
-import * from gd2c.bytecode
+from gd2c.bytecode import *
 
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import FunctionContext
@@ -27,7 +27,7 @@ class FunctionCodegen:
         if self.function_context.func.len_constants > 0:
             file.write(f"""
                 if (0 == {self.function_context.constants_initialized_identifier}) {{
-            """)
+            """) 
 
             for const in self.function_context.func.constants():
                 file.write(f"""\
@@ -35,7 +35,7 @@ class FunctionCodegen:
                         uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
                         gd2c->godot_variant_decode(&{self.function_context.constants_array_identifier}[{const.index}], data, {len(const.data)}, {const.vtype.value}, true);
                     }}
-                """)
+                """) 
 
             file.write(f"""
                     {self.function_context.constants_initialized_identifier} = 1;            
@@ -77,14 +77,28 @@ class FunctionCodegen:
 
             file.write(f"{node.label}:\n")
             for op in node.block.ops:
-                self._transpile_op(op, file)
+                self._transpile_op(node, op, file)
 
-    def _transpile_op(self, op: GDScriptOp, file: IO):
-        if op is JumpGDScriptOp:
+    def _transpile_op(self, node: ControlFlowGraphNode, op: GDScriptOp, file: IO):
+        if op.opcode == OPCODE_JUMP:
             branch = self.function_context.cfg.node_from_address(op.branch)
             file.write(f"goto {branch.label};\n")
-        elif op is JumpIfGDScriptOp:
-            fallthrough = self.function_context.cfg.node_from_address(op.branch)
+        elif op.opcode == OPCODE_JUMPIF:
+            branch = self.function_context.cfg.node_from_address(op.branch)
+            fallthrough = self.function_context.cfg.node_from_address(op.fallthrough)
+            file.write(f"""
+                __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
+                if (__flag) goto {branch.label};
+                goto {fallthrough.label};
+            """)
+        elif op.opcode == OPCODE_JUMPIFNOT:
+            branch = self.function_context.cfg.node_from_address(op.branch)
+            fallthrough = self.function_context.cfg.node_from_address(op.fallthrough)
+            file.write(f"""
+                __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
+                if (!__flag) goto {branch.label};
+                goto {fallthrough.label};
+            """)            
         else:
             file.write(f"{str(op)};\n")
 

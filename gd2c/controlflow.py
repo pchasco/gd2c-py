@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet
 from gd2c.bytecode import GDScriptOp, DefineGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
+from gd2c.variable import Variable
 
 class BasicBlock:
     def __init__(self):
@@ -132,6 +133,9 @@ class ControlFlowGraphNode:
     @outs.setter
     def outs(self, value: Iterable[int]):
         self._outs = frozenset(value)  
+
+    def variable(self, address: int) -> object:
+        return Variable(address)
 
 class Edge:
     def __init__(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode):
@@ -330,7 +334,7 @@ def build_control_flow_graph(func: GDScriptFunction):
         entry_node.block.append_op(DefineGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_LOCALCONSTANT, c.index)))
     for p in func.parameters():
         entry_node.block.append_op(DefineGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, p.index)))
-    entry_node.block.ops.append(JumpGDScriptOp(0))
+    entry_node.block.append_op(JumpGDScriptOp(0))
 
     exit_node = ControlFlowGraphNode('__exit', BasicBlock())
 
@@ -354,7 +358,7 @@ def build_control_flow_graph(func: GDScriptFunction):
                     block.append_op(JumpGDScriptOp(ip))
 
             block = BasicBlock()
-            node = ControlFlowGraphNode(str(ip), block)
+            node = ControlFlowGraphNode(f"_{str(ip)}", block)
             node.address = ip
             nodes[ip] = node
             new_block_flag = False

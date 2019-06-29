@@ -72,3 +72,4 @@ class GDScriptAddress:
         return (mode << ADDRESS_BITS) | (offset & ADDRESS_MASK)
 
 GDScriptAddress.Zero = GDScriptAddress(0)
+

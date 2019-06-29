@@ -11,7 +11,8 @@
                 godot_variant stack[1];
                                 api10->godot_variant_new_nil(&stack[0]);
                 __entry:
-0:
+goto _0;
+_0:
 END;
 __exit:
                     api10->godot_variant_destroy(&stack[0]);
@@ -69,33 +70,39 @@ DEFINE 67108867;
 DEFINE 67108868;
 DEFINE 67108869;
 DEFINE 100663296;
-0:
+goto _0;
+_0:
 LINE 6;
 ASSIGN 100663297 = 67108864;
 LINE 7;
 OPER 83886082 = 100663297 == 67108864;
-JUMPIF 83886082? 56 : 15;
-56:
+
+                __flag = api10->godot_variant_as_bool(&<gd2c.address.GDScriptAddress object at 0x110362048>);
+                if (__flag) goto _56;
+                goto _15;
+            _56:
 LINE 16;
 LINE 15;
-JUMPIF 67108865? 68 : 63;
-63:
-LINE 17;
-ASSIGN 100663296 = 67108865;
-JUMP 68;
-68:
+
+                __flag = api10->godot_variant_as_bool(&<gd2c.address.GDScriptAddress object at 0x110362048>);
+                if (__flag) goto _68;
+                goto _63;
+            _68:
 LINE 18;
 OPER 83886082 = 100663297 == 67108868;
-JUMPIF 83886082? 85 : 78;
-78:
+
+                __flag = api10->godot_variant_as_bool(&<gd2c.address.GDScriptAddress object at 0x110362048>);
+                if (__flag) goto _85;
+                goto _78;
+            _78:
 LINE 19;
 ASSIGN 100663296 = 67108869;
-JUMP 92;
-92:
+goto _92;
+_92:
 LINE 22;
 ASSIGN 100663296 = 67108865;
-JUMP 97;
-97:
+goto _97;
+_97:
 LINE 23;
 ASSIGN 100663296 = 67108865;
 LINE 24;
@@ -103,35 +110,45 @@ LINE 25;
 LINE 26;
 END;
 __exit:
-85:
+_85:
 LINE 21;
 LINE 20;
 ASSIGN 100663297 = 67108868;
-JUMP 92;
-15:
+goto _92;
+_63:
+LINE 17;
+ASSIGN 100663296 = 67108865;
+goto _68;
+_15:
 LINE 8;
-JUMPIF 67108865? 25 : 20;
-20:
+
+                __flag = api10->godot_variant_as_bool(&<gd2c.address.GDScriptAddress object at 0x110362048>);
+                if (__flag) goto _25;
+                goto _20;
+            _20:
 LINE 9;
 ASSIGN 100663296 = 67108865;
-JUMP 25;
-25:
+goto _25;
+_25:
 LINE 10;
 OPER 83886082 = 100663297 == 67108866;
-JUMPIF 83886082? 42 : 35;
-42:
+
+                __flag = api10->godot_variant_as_bool(&<gd2c.address.GDScriptAddress object at 0x110365048>);
+                if (__flag) goto _42;
+                goto _35;
+            _42:
 LINE 13;
 LINE 12;
 ASSIGN 100663297 = 67108868;
-JUMP 49;
-49:
+goto _49;
+_49:
 LINE 14;
 ASSIGN 100663296 = 67108869;
-JUMP 97;
-35:
+goto _97;
+_35:
 LINE 11;
 ASSIGN 100663296 = 67108867;
-JUMP 49;
+goto _49;
                     api10->godot_variant_destroy(&stack[0]);
                                     api10->godot_variant_destroy(&stack[1]);
                                     api10->godot_variant_destroy(&stack[2]);
@@ -151,7 +168,8 @@ JUMP 49;
                 godot_variant stack[1];
                                 api10->godot_variant_new_nil(&stack[0]);
                 __entry:
-0:
+goto _0;
+_0:
 CALLBASE 83886080 = self.0(...);
 END;
 __exit:
@@ -185,7 +203,8 @@ __exit:
 DEFINE 67108864;
 DEFINE 100663296;
 DEFINE 100663297;
-0:
+goto _0;
+_0:
 LINE 4;
 RETURN 67108864;
 __exit:
@@ -207,7 +226,8 @@ __exit:
                 godot_variant stack[1];
                                 api10->godot_variant_new_nil(&stack[0]);
                 __entry:
-0:
+goto _0;
+_0:
 LINE 7;
 LINE 8;
 END;
