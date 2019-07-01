@@ -3,10 +3,9 @@ from typing import TYPE_CHECKING, IO, Set
 from gd2c.address import GDScriptAddress, ADDRESS_MODE_LOCALCONSTANT
 from gd2c.variant import VariantType
 from gd2c.bytecode import *
-
+from gd2c.controlflow import ControlFlowGraphNode
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import FunctionContext
-    from gd2c.controlflow import ControlFlowGraphNode
 
 class FunctionCodegen:
     def __init__(self, function_context: FunctionContext):
@@ -42,11 +41,13 @@ class FunctionCodegen:
                 }}
             """)
 
-        if self.function_context.func.stack_size > 0:
+        stack_array_size = self.function_context.func.stack_size - self.function_context.func.len_parameters
+
+        if stack_array_size > 0:
             file.write(f"""
-                godot_variant stack[{self.function_context.func.stack_size}];
+                godot_variant stack[{stack_array_size}];
             """)
-            for i in range(self.function_context.func.stack_size):
+            for i in range(stack_array_size):
                 file.write(f"""\
                     api10->godot_variant_new_nil(&stack[{i}]);
                 """)
@@ -54,7 +55,7 @@ class FunctionCodegen:
         self._transpile_ops(file)
 
         if self.function_context.func.stack_size > 0:
-            for i in range(self.function_context.func.stack_size):
+            for i in range(stack_array_size):
                 file.write(f"""\
                     api10->godot_variant_destroy(&stack[{i}]);
                 """)                
@@ -83,6 +84,7 @@ class FunctionCodegen:
         if op.opcode == OPCODE_JUMP:
             branch = self.function_context.cfg.node_from_address(op.branch)
             file.write(f"goto {branch.label};\n")
+
         elif op.opcode == OPCODE_JUMPIF:
             branch = self.function_context.cfg.node_from_address(op.branch)
             fallthrough = self.function_context.cfg.node_from_address(op.fallthrough)
@@ -91,6 +93,7 @@ class FunctionCodegen:
                 if (__flag) goto {branch.label};
                 goto {fallthrough.label};
             """)
+
         elif op.opcode == OPCODE_JUMPIFNOT:
             branch = self.function_context.cfg.node_from_address(op.branch)
             fallthrough = self.function_context.cfg.node_from_address(op.fallthrough)
@@ -98,8 +101,27 @@ class FunctionCodegen:
                 __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
                 if (!__flag) goto {branch.label};
                 goto {fallthrough.label};
-            """)            
+            """)     
+
+        elif op.opcode == OPCODE_LINE:
+            # Ignore  
+            pass
+
+        elif op.opcode == OPCODE_ASSIGN:
+            file.write(f"""
+                api10->godot_variant_new_copy({node.variable(op.dest).address_of()}, {node.variable(op.source).address_of()});
+            """)
+
+        elif op.opcode == OPCODE_OPERATOR:
+            file.write(f"""
+                api11->godot_variant_evaluate({op.op}, 
+                    {node.variable(op.operand1).address_of()}, 
+                    {node.variable(op.operand2).address_of()}, 
+                    {node.variable(op.dest).address_of()}, 
+                    __flag);
+            """)
+                
         else:
-            file.write(f"{str(op)};\n")
+            file.write(f"// {str(op)};\n")
 
     

@@ -6,6 +6,7 @@ from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction
 from gd2c.targets._gdnative.function_codegen import FunctionCodegen
 from gd2c.targets._gdnative.class_codegen import ClassCodegen
 from gd2c.controlflow import ControlFlowGraph, build_control_flow_graph
+from gd2c.targets._gdnative.transform import map_variables_transformation
 
 class FunctionContext:
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
@@ -15,6 +16,7 @@ class FunctionContext:
         self.constants_initialized_identifier = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
         self.function_identifier = f"{class_context.cls.name}_{self.func.name}"
         self.cfg = build_control_flow_graph(func)
+        self.parameters_identifier = "p_args"
 
 class VtableEntry:
     def __init__(self, func: FunctionContext):
@@ -88,6 +90,7 @@ class GDNativeCodeGen:
 
     def transpile(self):
         self._initialize_contexts()
+        self._apply_transformations()
         self._transpile_header_file()
         self._transpile_implementation()
 
@@ -105,6 +108,14 @@ class GDNativeCodeGen:
         self._class_contexts = {}
         self._project.visit_classes_in_dependency_order(make_context)
         self._project.visit_classes_in_dependency_order(make_vtable)
+
+    def _apply_transformations(self):
+        def transform(cls, depth):
+            class_context = self._class_contexts[cls.type_id]
+            for func_context in class_context.function_contexts:
+                map_variables_transformation(func_context)
+
+        self._project.visit_classes_in_dependency_order(transform)
 
     def _transpile_header_file(self):
         p = Path(self._output_path, "godotproject.h")

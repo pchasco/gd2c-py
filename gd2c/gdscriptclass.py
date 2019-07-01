@@ -65,6 +65,7 @@ class GDScriptFunction:
         for param in self._parameters.values():
             yield param
 
+    @property
     def len_parameters(self) -> int:
         return len(self._parameters)
 

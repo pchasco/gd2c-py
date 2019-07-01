@@ -1,9 +1,17 @@
 from __future__ import annotations
-from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet
+from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet, Any, Callable
 from gd2c.bytecode import GDScriptOp, DefineGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
-from gd2c.variable import Variable
+
+EXIT_NODE_ADDRESS = 2_147_483_646
+
+class AbstractVariable:
+    def value(self) -> str:
+        raise Exception("not implemented")
+
+    def address_of(self) -> str:
+        raise Exception("not implemented")
 
 class BasicBlock:
     def __init__(self):
@@ -102,6 +110,7 @@ class ControlFlowGraphNode:
         self._ins: FrozenSet[int] = frozenset([])
         self._outs: FrozenSet[int] = frozenset([])
         self._addr: Optional[int] = None
+        self._variable_map: Dict[int, AbstractVariable] = {}
     
     @property
     def address(self) -> Optional[int]:
@@ -134,8 +143,11 @@ class ControlFlowGraphNode:
     def outs(self, value: Iterable[int]):
         self._outs = frozenset(value)  
 
-    def variable(self, address: int) -> object:
-        return Variable(address)
+    def variable(self, address: int) -> AbstractVariable:
+        return self._variable_map[address]
+
+    def map_address_to_variable(self, address: int, variable: AbstractVariable):
+        self._variable_map[address] = variable
 
 class Edge:
     def __init__(self, source: ControlFlowGraphNode, dest: ControlFlowGraphNode):
@@ -230,6 +242,22 @@ class ControlFlowGraph:
                 return node
         
         return None
+        
+    def visit_nodes(self, visitor: Callable[[ControlFlowGraphNode], None]):
+        assert self.entry_node
+
+        worklist: List[ControlFlowGraphNode] = [self.entry_node]
+        visited: Set[ControlFlowGraphNode] = set([])
+        while any(worklist):
+            node = worklist.pop()
+            if node in visited:
+                continue
+                
+            visitor(node)
+
+            visited.add(node)
+            worklist.extend(self.succs(node))
+
 
     def live_variable_analysis(self):
         class def_use:
@@ -325,7 +353,7 @@ class ControlFlowGraph:
         
         print("")
 
-def build_control_flow_graph(func: GDScriptFunction):
+def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
     nodes: Dict[int, ControlFlowGraphNode] = {}
     
     # Build entry node.
@@ -337,6 +365,7 @@ def build_control_flow_graph(func: GDScriptFunction):
     entry_node.block.append_op(JumpGDScriptOp(0))
 
     exit_node = ControlFlowGraphNode('__exit', BasicBlock())
+    exit_node.address = EXIT_NODE_ADDRESS
 
     # Identify jump targets which always begin new blocks
 
@@ -349,6 +378,7 @@ def build_control_flow_graph(func: GDScriptFunction):
 
     block: Block = None # type: ignore
     new_block_flag = True
+
     for ip, op in func.ops():
         if new_block_flag or (ip in jump_targets):
             if block:
@@ -364,12 +394,10 @@ def build_control_flow_graph(func: GDScriptFunction):
             new_block_flag = False
 
         block.append_op(op)
+        is_block_closed = False
 
         if isinstance(op, (EndGDScriptOp, ReturnGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             new_block_flag = True
-
-    for node in nodes.values():
-        node.block.lock()            
 
     # create edges
     cfg = ControlFlowGraph()
@@ -381,7 +409,11 @@ def build_control_flow_graph(func: GDScriptFunction):
             cfg.add_edge(Edge(node, nodes[last_op.branch]))
             cfg.add_edge(Edge(node, nodes[last_op.fallthrough]))
         elif isinstance(last_op, (ReturnGDScriptOp, EndGDScriptOp)):
+            node.block.append_op(JumpGDScriptOp(exit_node.address))
             cfg.add_edge(Edge(node, exit_node))
+
+    for node in nodes.values():
+        node.block.lock()            
 
     cfg._entry_node = entry_node
     cfg.add_node(entry_node)
