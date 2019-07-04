@@ -21,7 +21,9 @@ class FunctionCodegen:
                 godot_variant** p_args)
             {{   
                 godot_bool __flag;   
-        """)
+                godot_variant __return_value;
+                api10->godot_variant_new_nil(&__return_value);
+            """)
 
         if self.function_context.func.len_constants > 0:
             file.write(f"""
@@ -54,13 +56,19 @@ class FunctionCodegen:
 
         self._transpile_ops(file)
 
+        # Function teardown
+        file.write("""
+            __return:        
+        """)
+
         if self.function_context.func.stack_size > 0:
             for i in range(stack_array_size):
                 file.write(f"""\
                     api10->godot_variant_destroy(&stack[{i}]);
-                """)                
+                """)       
 
         file.write("""
+                return __return_value;
             }
         """)
 
@@ -119,6 +127,12 @@ class FunctionCodegen:
                     {node.variable(op.operand2).address_of()}, 
                     {node.variable(op.dest).address_of()}, 
                     __flag);
+            """)
+
+        elif op.opcode == OPCODE_RETURN:
+            file.write(f"""
+                api10->godot_variant_new_copy(&__return_value, {node.variable(op.source).address_of()});
+                goto __return;            
             """)
                 
         else:

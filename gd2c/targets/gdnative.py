@@ -14,13 +14,17 @@ class FunctionContext:
         self.class_context = class_context
         self.constants_array_identifier = f"{class_context.cls.name}_{self.func.name}_constants"
         self.constants_initialized_identifier = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
-        self.function_identifier = f"{class_context.cls.name}_{self.func.name}"
+        self.function_identifier = f"{class_context.cls.name}_func_{self.func.name}"
         self.cfg = build_control_flow_graph(func)
         self.parameters_identifier = "p_args"
 
 class VtableEntry:
     def __init__(self, func: FunctionContext):
         self.func_context = func
+
+class MemberContext:
+    def __init__(self, cls: GDScriptClass, member: GDScriptMember):
+        self.member_identifier = f"{member.name}"
 
 class ClassContext:
     def __init__(self, cls: GDScriptClass):
@@ -35,6 +39,25 @@ class ClassContext:
         self.vtable_entries: List[VtableEntry] = []
         self.function_contexts: List[FunctionContext] = []
         self.constants_initialized_identifier = f"{cls.name}_constants_initialized"
+        self.ctor_identifier = f"{cls.name}_ctor"
+        self.dtor_identifier = f"{cls.name}_dtor"
+
+        self._initialize_members()
+
+    def _initialize_members(self):
+        inherited_members = set([])
+        base = self.cls.base
+        while base:
+            inherited_members.update([m.name for m in base.members()])
+            base = self.cls.base
+
+        self.member_setter_identifiers = dict([
+            (p.name, f"{cls.name}_set_{p.name}") for p in cls.members() if p.name not in inherited_members
+        ])
+        self.member_getter_identifiers = dict([
+            (p.name, f"{cls.name}_get_{p.name}") for p in cls.members() if p.name not in inherited_members
+        ])
+        self.inherited_members = frozenset(inherited_members)
 
     def initialize_vtable(self, base_context: ClassContext):
         self.function_contexts = [FunctionContext(f, self) for f in self.cls.functions()]
@@ -192,3 +215,65 @@ class GDNativeCodeGen:
                     codegen.transpile(impl)
 
             self._project.visit_classes_in_dependency_order(iterate_function)
+
+            self._transpile_registrations(impl)
+
+    def _transpile_registrations(self, impl: IO):
+        impl.write(f"""
+            void GDN_EXPORT {self._project.export_prefix}_nativescript_init(void *p_handle) {{
+        """)
+
+        def visitor(cls: GDScriptClass, depth: int):
+            class_context = self._class_contexts[cls.type_id]
+            impl.write(f"""
+                {{
+                    godot_instance_create_func create = {{ NULL, NULL, NULL }};
+                    create.create_func = {class_context.ctor_identifier};
+                    godot_instance_destroy_func destroy = {{ NULL, NULL, NULL }};
+                    destroy.destroy_func = {class_context.dtor_identifier};
+                    nativescript10->godot_nativescript_register_class(p_handle, "{cls.name}", "{cls.built_in_type}", create, destroy);
+                }}
+            """)
+
+            for entry in class_context.vtable_entries:
+                impl.write(f"""
+                    {{
+                        godot_instance_method method = {{ NULL, NULL, NULL }};
+                        method.method = &{entry.func_context.function_identifier};
+                        godot_method_attributes attributes = {{ GODOT_METHOD_RPC_MODE_DISABLED }};
+                        nativescript10->godot_nativescript_register_method(p_handle, "{cls.name}", "{entry.func_context.func.name}", attributes, method);
+                    }}
+                """)
+
+            for signal in cls.signals():
+                impl.write(f"""
+                    {{
+                        godot_string name = api10->godot_string_chars_to_utf8("{signal}");
+                        godot_signal signal = {{
+                            name,
+                            0,
+                            NULL,
+                            0,
+                            NULL
+                        }};
+                        nativescript10->godot_nativescript_register_signal(p_handle, "{signal}", &signal);
+                    }}
+                """)
+
+            impl.write(f"""
+                /********************
+                IMPLEMENT PROPERTIES
+                *********************/    
+            """)
+
+            impl.write(f"""
+                /********************
+                INITIALIZE VTABLE
+                *********************/    
+            """)
+
+        self._project.visit_classes_in_dependency_order(visitor)
+
+        impl.write(f"""
+            }}
+        """)

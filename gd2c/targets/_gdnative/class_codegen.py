@@ -45,3 +45,27 @@ class ClassCodegen:
     
     def _transpile_body(self, writer: IO):
         pass
+
+    def _transpile_properties(self, writer: IO):
+        for prop in self.class_context.cls.properties():
+            if prop.name not in self.class_context.inherited_members:
+                writer.write(f"""
+                    godot_variant {self.class_context.member_getter_identifiers[prop.name]}(
+                        godot_object *p_instance,
+                        void *p_method_data,
+                        struct {self.class_context.struct_tag} *p_user_data
+                    ) {{
+                        godot_variant value;
+                        api10->godot_variant_new_copy(&value, &p_user_data->member_{prop.index});
+                        return value;
+                    }}
+
+                    void {self.class_context.member_setter_identifiers[prop.name]}(
+                        godot_object *p_instance,
+                        void *p_method_data,
+                        struct {self.class_context.struct_tag} *p_user_data,
+                        godot_variant *p_value
+                    ) {{
+                        api10->godot_variant_new_copy(&p_user_data->member_{prop.index}, p_value);
+                    }}
+                """)

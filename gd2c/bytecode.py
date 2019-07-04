@@ -624,6 +624,7 @@ class JumpIfGDScriptOp(GDScriptOp):
         self.branch = branch
         self.condition = condition
         self.fallthrough = fallthrough
+        self._reads = set([condition])
 
     def __str__(self):
         return f"JUMPIF {self.condition} ? {self.branch} : {self.fallthrough}"
@@ -642,6 +643,7 @@ class JumpIfNotGDScriptOp(GDScriptOp):
         self.branch = branch
         self.fallthrough = fallthrough
         self.condition = condition
+        self._reads = set([condition])
 
     def __str__(self):
         return f"JUMPIFNT {self.condition} ? {self.branch}"
