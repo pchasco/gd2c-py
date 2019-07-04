@@ -29,17 +29,9 @@ class GDScriptClassConstant:
 
 class GDScriptMember:
     def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int]):
-        self._name = name
-        self._index = index
-        self._vtype = VariantType.get(vtype)
-
-    @property
-    def name(self) -> str:
-        return self._name
-    
-    @property
-    def index(self) -> int:
-        return self._index
+        self.name = name
+        self.index = index
+        self.vtype = VariantType.get(vtype)
 
 class GDScriptFunctionParameter:
     def __init__(self, name: str, vtype: Union[VariantType, int], index: int):
@@ -60,6 +52,10 @@ class GDScriptFunction:
         self._constants: Dict[int, GDScriptFunctionConstant] = {}
         self._ops: List[Tuple[int, GDScriptOp]] = []
         self.global_names: List[str] = []
+
+    @property
+    def len_stack_array(self) -> int:
+        return self.stack_size - len(self._parameters)
 
     def parameters(self) -> Iterable[GDScriptFunctionParameter]:
         for param in self._parameters.values():

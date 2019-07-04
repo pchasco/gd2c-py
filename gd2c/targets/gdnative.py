@@ -2,21 +2,21 @@ from __future__ import annotations
 from typing import Union, List, Set, FrozenSet, Optional, Dict, IO
 from pathlib import Path
 from gd2c.project import Project
-from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction
+from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
 from gd2c.targets._gdnative.function_codegen import FunctionCodegen
 from gd2c.targets._gdnative.class_codegen import ClassCodegen
 from gd2c.controlflow import ControlFlowGraph, build_control_flow_graph
-from gd2c.targets._gdnative.transform import map_variables_transformation
+import gd2c.targets._gdnative.transform
 
 class FunctionContext:
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
-        self.func = func
-        self.class_context = class_context
-        self.constants_array_identifier = f"{class_context.cls.name}_{self.func.name}_constants"
-        self.constants_initialized_identifier = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
-        self.function_identifier = f"{class_context.cls.name}_func_{self.func.name}"
-        self.cfg = build_control_flow_graph(func)
-        self.parameters_identifier = "p_args"
+        self.func: GDScriptFunction = func
+        self.class_context: ClassContext = class_context
+        self.constants_array_identifier: str = f"{class_context.cls.name}_{self.func.name}_constants"
+        self.constants_initialized_identifier: str = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
+        self.function_identifier: str = f"{class_context.cls.name}_func_{self.func.name}"
+        self.cfg: ControlFlowGraph = build_control_flow_graph(func)
+        self.parameters_identifier: str = "p_args"
 
 class VtableEntry:
     def __init__(self, func: FunctionContext):
@@ -49,13 +49,13 @@ class ClassContext:
         base = self.cls.base
         while base:
             inherited_members.update([m.name for m in base.members()])
-            base = self.cls.base
+            base = base.base
 
         self.member_setter_identifiers = dict([
-            (p.name, f"{cls.name}_set_{p.name}") for p in cls.members() if p.name not in inherited_members
+            (p.name, f"{self.cls.name}_set_{p.name}") for p in self.cls.members() if p.name not in inherited_members
         ])
         self.member_getter_identifiers = dict([
-            (p.name, f"{cls.name}_get_{p.name}") for p in cls.members() if p.name not in inherited_members
+            (p.name, f"{self.cls.name}_get_{p.name}") for p in self.cls.members() if p.name not in inherited_members
         ])
         self.inherited_members = frozenset(inherited_members)
 
@@ -97,9 +97,15 @@ class ClassContext:
 
 class GDNativeCodeGen:
     def __init__(self, project: Project, output_path: Union[str, Path]):
-        self._project = project
-        self._class_contexts: Dict[int, ClassContext] = {}
+        self.project = project
+        self.class_contexts: Dict[int, ClassContext] = {}
         self.output_path = Path(output_path)
+
+        self.transforms = [
+            gd2c.targets._gdnative.transform.insert_initializers_transformation,
+            gd2c.targets._gdnative.transform.insert_destructors_transformation,
+            gd2c.targets._gdnative.transform.map_variables_transformation
+        ]
 
     @property
     def output_path(self) -> Path:
@@ -108,7 +114,7 @@ class GDNativeCodeGen:
     def output_path(self, value: str):
         p = Path(value)
         assert p.is_dir(), "output_path must be a directory"
-        assert not str(p.resolve()).startswith(str(Path(self._project.root).resolve()))
+        assert not str(p.resolve()).startswith(str(Path(self.project.root).resolve()))
         self._output_path = p
 
     def transpile(self):
@@ -119,26 +125,22 @@ class GDNativeCodeGen:
 
     def _initialize_contexts(self):
         def make_context(cls: GDScriptClass, depth: int):
-            print(f"make_context {depth} {cls}")
-            self._class_contexts[cls.type_id] = ClassContext(cls)
+            print(f"make_context {depth} {cls.name}")
+            self.class_contexts[cls.type_id] = ClassContext(cls)
 
         def make_vtable(cls: GDScriptClass, depth: int):
-            print(f"make_vtable {depth} {cls}")
-            context = self._class_contexts[cls.type_id]
-            base_context = self._class_contexts.get(cls.base.type_id) if cls.base else None
+            print(f"make_vtable {depth} {cls.name}")
+            context = self.class_contexts[cls.type_id]
+            base_context = self.class_contexts.get(cls.base.type_id) if cls.base else None
             context.initialize_vtable(base_context)
         
-        self._class_contexts = {}
-        self._project.visit_classes_in_dependency_order(make_context)
-        self._project.visit_classes_in_dependency_order(make_vtable)
+        self.class_contexts = {}
+        self.project.visit_classes_in_dependency_order(make_context)
+        self.project.visit_classes_in_dependency_order(make_vtable)
 
     def _apply_transformations(self):
-        def transform(cls, depth):
-            class_context = self._class_contexts[cls.type_id]
-            for func_context in class_context.function_contexts:
-                map_variables_transformation(func_context)
-
-        self._project.visit_classes_in_dependency_order(transform)
+        for transform in self.transforms:
+            transform(self)
 
     def _transpile_header_file(self):
         p = Path(self._output_path, "godotproject.h")
@@ -151,10 +153,10 @@ class GDNativeCodeGen:
             """)
 
             def iterate_data(cls: GDScriptClass, depth: int):
-                class_context = self._class_contexts[cls.type_id]
+                class_context = self.class_contexts[cls.type_id]
                 base_struct_tag = "class_base_t" # class_base_t is defined in gd2c.h
                 if cls.base:
-                    base_context = self._class_contexts[cls.base.type_id]
+                    base_context = self.class_contexts[cls.base.type_id]
                     base_struct_tag = base_context.struct_tag
 
                 header.write(f"""
@@ -187,7 +189,7 @@ class GDNativeCodeGen:
                         header.write(f"""int {func_context.constants_initialized_identifier} = 0;\n""")
 
             def iterate_function(cls: GDScriptClass, depth: int):
-                class_context = self._class_contexts[cls.type_id]
+                class_context = self.class_contexts[cls.type_id]
                 for func_context in class_context.function_contexts:
                     header.write(f"""
                         godot_variant {func_context.function_identifier}(
@@ -198,8 +200,8 @@ class GDNativeCodeGen:
                             godot_variant** p_args);    
                     """)
 
-            self._project.visit_classes_in_dependency_order(iterate_data)
-            self._project.visit_classes_in_dependency_order(iterate_function)
+            self.project.visit_classes_in_dependency_order(iterate_data)
+            self.project.visit_classes_in_dependency_order(iterate_function)
 
             header.write(f"""
                 #endif
@@ -208,23 +210,27 @@ class GDNativeCodeGen:
     def _transpile_implementation(self):
         p = Path(self._output_path, "godotproject.c")
         with p.open(mode="w") as impl:
+            impl.write(f"""
+                #include "gd2c.h"
+            """)
+
             def iterate_function(cls: GDScriptClass, depth: int):
-                class_context = self._class_contexts[cls.type_id]
+                class_context = self.class_contexts[cls.type_id]
                 for func_context in class_context.function_contexts:
                     codegen = FunctionCodegen(func_context)
                     codegen.transpile(impl)
 
-            self._project.visit_classes_in_dependency_order(iterate_function)
+            self.project.visit_classes_in_dependency_order(iterate_function)
 
-            self._transpile_registrations(impl)
+            self._transpile_nativescript_registrations(impl)
 
-    def _transpile_registrations(self, impl: IO):
+    def _transpile_nativescript_registrations(self, impl: IO):
         impl.write(f"""
-            void GDN_EXPORT {self._project.export_prefix}_nativescript_init(void *p_handle) {{
+            void GDN_EXPORT {self.project.export_prefix}_nativescript_init(void *p_handle) {{
         """)
 
         def visitor(cls: GDScriptClass, depth: int):
-            class_context = self._class_contexts[cls.type_id]
+            class_context = self.class_contexts[cls.type_id]
             impl.write(f"""
                 {{
                     godot_instance_create_func create = {{ NULL, NULL, NULL }};
@@ -272,7 +278,7 @@ class GDNativeCodeGen:
                 *********************/    
             """)
 
-        self._project.visit_classes_in_dependency_order(visitor)
+        self.project.visit_classes_in_dependency_order(visitor)
 
         impl.write(f"""
             }}

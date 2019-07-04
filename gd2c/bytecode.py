@@ -52,6 +52,7 @@ OPCODE_BOX = 1001
 OPCODE_DESTROY = 1002
 OPCODE_UNBOX = 1003
 OPCODE_DEFINE = 1004
+OPCODE_INITIALIZE = 1005
 
 # Comparison
 OPERATOR_EQUAL = 0
@@ -711,7 +712,6 @@ class PseudoGDScriptOp(GDScriptOp):
     def stride(self) -> int:
         raise Exception("Pseudo-ops have no stride as they do not have a bytecode representation")
 
-
 class DefineGDScriptOp(PseudoGDScriptOp):
     def __init__(self, address: int):
         super().__init__(OPCODE_DEFINE)
@@ -720,6 +720,24 @@ class DefineGDScriptOp(PseudoGDScriptOp):
 
     def __str__(self):
         return f"DEFINE {self.address}"
+
+class DestroyGDScriptOp(PseudoGDScriptOp):
+    def __init__(self, address: int):
+        super().__init__(OPCODE_DESTROY)
+        self.address = address
+        self._writes = set([address])
+
+    def __str__(self):
+        return f"DESTROY {self.address}"
+
+class InitializeGDScriptOp(PseudoGDScriptOp):
+    def __init__(self, address: int):
+        super().__init__(OPCODE_INITIALIZE)
+        self.address = address
+        self._writes = set([address])
+
+    def __str__(self):
+        return f"INIT {self.address}"
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,
@@ -767,7 +785,8 @@ _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDS
     OPCODE_NOOP: None,
     OPCODE_BOX: None,
     OPCODE_DESTROY: None,
-    OPCODE_UNBOX: None  
+    OPCODE_UNBOX: None,
+    OPCODE_INITIALIZE: None
 }
 
 def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> GDScriptOp:

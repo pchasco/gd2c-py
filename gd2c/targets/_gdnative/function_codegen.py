@@ -25,6 +25,7 @@ class FunctionCodegen:
                 api10->godot_variant_new_nil(&__return_value);
             """)
 
+        # Initialize function local constants if first time function was called
         if self.function_context.func.len_constants > 0:
             file.write(f"""
                 if (0 == {self.function_context.constants_initialized_identifier}) {{
@@ -41,43 +42,23 @@ class FunctionCodegen:
             file.write(f"""
                     {self.function_context.constants_initialized_identifier} = 1;            
                 }}
+
+                godot_variant stack[{self.function_context.func.len_stack_array}];
             """)
 
-        stack_array_size = self.function_context.func.stack_size - self.function_context.func.len_parameters
-
-        if stack_array_size > 0:
-            file.write(f"""
-                godot_variant stack[{stack_array_size}];
-            """)
-            for i in range(stack_array_size):
-                file.write(f"""\
-                    api10->godot_variant_new_nil(&stack[{i}]);
-                """)
-
-        self._transpile_ops(file)
-
-        # Function teardown
-        file.write("""
-            __return:        
-        """)
-
-        if self.function_context.func.stack_size > 0:
-            for i in range(stack_array_size):
-                file.write(f"""\
-                    api10->godot_variant_destroy(&stack[{i}]);
-                """)       
+        self._transpile_nodes(file)
 
         file.write("""
                 return __return_value;
             }
         """)
 
-    def _transpile_ops(self, file: IO):
+    def _transpile_nodes(self, file: IO):
         cfg = self.function_context.cfg
         worklist = [cfg.entry_node]
         visited: Set[ControlFlowGraphNode] = set()
         while any(worklist):
-            node = worklist.pop()
+            node = cast(ControlFlowGraphNode, worklist.pop())
             if node in visited:
                 continue
 
@@ -89,52 +70,85 @@ class FunctionCodegen:
                 self._transpile_op(node, op, file)
 
     def _transpile_op(self, node: ControlFlowGraphNode, op: GDScriptOp, file: IO):
-        if op.opcode == OPCODE_JUMP:
+        def opcode_jump(op: JumpGDScriptOp):
             branch = self.function_context.cfg.node_from_address(op.branch)
+            assert branch
             file.write(f"goto {branch.label};\n")
 
-        elif op.opcode == OPCODE_JUMPIF:
+        def opcode_jumpif(op: JumpIfGDScriptOp):
             branch = self.function_context.cfg.node_from_address(op.branch)
+            assert branch
             fallthrough = self.function_context.cfg.node_from_address(op.fallthrough)
+            assert fallthrough
             file.write(f"""
                 __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
                 if (__flag) goto {branch.label};
                 goto {fallthrough.label};
             """)
 
-        elif op.opcode == OPCODE_JUMPIFNOT:
+        def opcode_jumpifnot(op: JumpIfNotGDScriptOp):
             branch = self.function_context.cfg.node_from_address(op.branch)
+            assert branch
             fallthrough = self.function_context.cfg.node_from_address(op.fallthrough)
+            assert fallthrough
             file.write(f"""
                 __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
                 if (!__flag) goto {branch.label};
                 goto {fallthrough.label};
             """)     
 
-        elif op.opcode == OPCODE_LINE:
+        def opcode_line(op: LineGDScriptOp):
             # Ignore  
             pass
 
-        elif op.opcode == OPCODE_ASSIGN:
+        def opcode_assign(op: AssignGDScriptOp):
             file.write(f"""
                 api10->godot_variant_new_copy({node.variable(op.dest).address_of()}, {node.variable(op.source).address_of()});
             """)
 
-        elif op.opcode == OPCODE_OPERATOR:
+        def opcode_operator(op: OperatorGDScriptOp):
             file.write(f"""
                 api11->godot_variant_evaluate({op.op}, 
                     {node.variable(op.operand1).address_of()}, 
                     {node.variable(op.operand2).address_of()}, 
                     {node.variable(op.dest).address_of()}, 
-                    __flag);
+                    &__flag);
             """)
 
-        elif op.opcode == OPCODE_RETURN:
+        def opcode_return(op: ReturnGDScriptOp):
             file.write(f"""
                 api10->godot_variant_new_copy(&__return_value, {node.variable(op.source).address_of()});
-                goto __return;            
+                goto __exit;            
+            """)
+
+        def opcode_destroy(op: DestroyGDScriptOp):
+            file.write(f"""
+                api10->godot_variant_destroy({node.variable(op.address).address_of()});
+            """)
+
+        def opcode_initialize(op: InitializeyGDScriptOp):
+            file.write(f"""
+                api10->godot_variant_new_nil({node.variable(op.address).address_of()});
             """)
                 
+        if op.opcode == OPCODE_JUMP:
+            opcode_jump(op) # type: ignore
+        elif op.opcode == OPCODE_JUMPIF:
+            opcode_jumpif(op) # type: ignore
+        elif op.opcode == OPCODE_JUMPIFNOT:
+            opcode_jumpifnot(op) # type: ignore
+        elif op.opcode == OPCODE_LINE:
+            opcode_line(op) # type: ignore
+        elif op.opcode == OPCODE_ASSIGN:
+            opcode_assign(op) # type: ignore
+        elif op.opcode == OPCODE_OPERATOR:
+            opcode_operator(op) # type: ignore
+        elif op.opcode == OPCODE_RETURN:
+            opcode_return(op) # type: ignore
+        elif op.opcode == OPCODE_DESTROY:
+            opcode_destroy(op) # type: ignore
+        elif op.opcode == OPCODE_INITIALIZE:
+            opcode_initialize(op) # type: ignore
         else:
             file.write(f"// {str(op)};\n")
 

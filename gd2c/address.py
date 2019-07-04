@@ -71,5 +71,8 @@ class GDScriptAddress:
     def calc_address(mode: int, offset: int) -> int:
         return (mode << ADDRESS_BITS) | (offset & ADDRESS_MASK)
 
+    def __str__(self) -> str:
+        return f"\"{AddressModePrefix[self.mode]}#{self.offset}\""
+
 GDScriptAddress.Zero = GDScriptAddress(0)
 
