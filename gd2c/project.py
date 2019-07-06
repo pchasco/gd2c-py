@@ -138,6 +138,13 @@ class Project:
             if cls.base_resource_path:
                 cls.base = self._classes_by_resource_path[cls.base_resource_path]
 
+        def set_inherited_flag(cls: GDScriptClass, depth: int):
+            if cls.base:
+                for member in cls.members():
+                    member.is_inherited = cls.base.has_member(member.name)
+
+        self.visit_classes_in_dependency_order(set_inherited_flag)
+
     def generate_unique_class_name(self):
         """Generates a type id that is guaranteed to not have been generated for this project.
         """

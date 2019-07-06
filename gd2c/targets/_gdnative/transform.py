@@ -24,7 +24,7 @@ def map_variables_transformation(codegen: GDNativeCodeGen):
 
     def transform_class(cls, depth):
         class_context = codegen.class_contexts[cls.type_id]
-        for func_context in class_context.function_contexts:
+        for func_context in class_context.function_contexts.values():
             transform_func(func_context)
 
     codegen.project.visit_classes_in_dependency_order(transform_class)     
@@ -44,7 +44,7 @@ def insert_initializers_transformation(codegen: GDNativeCodeGen):
 
     def transform_class(cls, depth):
         class_context = codegen.class_contexts[cls.type_id]
-        for func_context in class_context.function_contexts:
+        for func_context in class_context.function_contexts.values():
             transform_func(func_context)
 
     codegen.project.visit_classes_in_dependency_order(transform_class)    
@@ -58,11 +58,11 @@ def insert_destructors_transformation(codegen: GDNativeCodeGen):
         variables: Dict[int, AbstractVariable] = {}
         node = func_context.cfg.exit_node
         for i in range(func_context.func.len_stack_array):
-            node.block.append_op(DestroyGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, i + func_context.func.len_parameters)))
+            node.block.insert_ops_before(node.block.last_op, [DestroyGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, i + func_context.func.len_parameters))])
 
     def transform_class(cls, depth):
         class_context = codegen.class_contexts[cls.type_id]
-        for func_context in class_context.function_contexts:
+        for func_context in class_context.function_contexts.values():
             transform_func(func_context)
 
     codegen.project.visit_classes_in_dependency_order(transform_class)    

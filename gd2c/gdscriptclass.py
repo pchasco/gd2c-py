@@ -29,6 +29,7 @@ class GDScriptClassConstant:
 
 class GDScriptMember:
     def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int]):
+        self.is_inherited = False
         self.name = name
         self.index = index
         self.vtype = VariantType.get(vtype)
@@ -210,6 +211,12 @@ class GDScriptClass:
         for member in self._members.values():
             yield member
 
+    def has_member(self, what: str) -> bool:
+        if isinstance(what, str):
+            return what in self._members
+
+        raise Exception("what must be str")
+
     @property
     def len_members(self) -> int:
         return len(self._members)
@@ -224,5 +231,21 @@ class GDScriptClass:
     def signals(self) -> Iterable[str]:
         for signal in self._signals:
             yield signal
+
+    def own_members(self) -> Iterable[GDScriptMember]:
+        result: List[GDScriptMember] = []
+        for member in self.members():
+            base = self.base
+            inherited = False
+            while base and not inherited:
+                for base_member in base.members():
+                    if base_member.name == member.name:
+                        inherited = True
+                        break
+                base = base.base
+            if not inherited:
+                result.append(member)
+
+        return sorted(result, key=lambda it: it.index)
 
     

@@ -24,11 +24,19 @@ class VtableEntry:
 
 class MemberContext:
     def __init__(self, cls: GDScriptClass, member: GDScriptMember):
+        self.member = member
         self.member_identifier = f"{member.name}"
+        self.path = f"{member.name}"
+        self.setter_identifier = f"{cls.name}_set_{member.name}"
+        self.getter_identifier = f"{cls.name}_get_{member.name}"
 
 class ClassContext:
-    def __init__(self, cls: GDScriptClass):
+    def __init__(self, cls: GDScriptClass, base_context: Optional[ClassContext]):
         self.cls = cls
+        self.base_context: Optional[ClassContext] = base_context
+        self.function_contexts: Dict[str, FunctionContext] = {}
+        self.member_contexts: Dict[str, MemberContext] = {}
+        self.vtable_entries: List[VtableEntry] = []
         self.struct_tag = f"{cls.name}_struct_t"
         self.vtable_wrappers_identifier = f"{cls.name}_vtable_wrappers"
         self.vtable_methods_identifier = f"{cls.name}_vtable_methods"
@@ -36,39 +44,31 @@ class ClassContext:
         self.vtable_identifier = f"{cls.name}_vtable"
         self.base_vtable_identifier = "vtable"
         self.vtable_init_function_identifier = f"{cls.name}_vtable_init"
-        self.vtable_entries: List[VtableEntry] = []
-        self.function_contexts: List[FunctionContext] = []
         self.constants_initialized_identifier = f"{cls.name}_constants_initialized"
         self.ctor_identifier = f"{cls.name}_ctor"
         self.dtor_identifier = f"{cls.name}_dtor"
 
-        self._initialize_members()
+    def initialize_members(self):
+        own_members = self.cls.own_members()
+        own_member_names = [m.name for m in own_members]
+        for member in self.cls.members():
+            if member.name in own_member_names:
+                self.member_contexts[member.name] = MemberContext(self.cls, member)
+            elif self.base_context:
+                self.member_contexts[member.name] = self.base_context.member_contexts[member.name]
+            else:
+                raise Exception("internal error: base_context is None")
 
-    def _initialize_members(self):
-        inherited_members = set([])
-        base = self.cls.base
-        while base:
-            inherited_members.update([m.name for m in base.members()])
-            base = base.base
-
-        self.member_setter_identifiers = dict([
-            (p.name, f"{self.cls.name}_set_{p.name}") for p in self.cls.members() if p.name not in inherited_members
-        ])
-        self.member_getter_identifiers = dict([
-            (p.name, f"{self.cls.name}_get_{p.name}") for p in self.cls.members() if p.name not in inherited_members
-        ])
-        self.inherited_members = frozenset(inherited_members)
-
-    def initialize_vtable(self, base_context: ClassContext):
-        self.function_contexts = [FunctionContext(f, self) for f in self.cls.functions()]
+    def initialize_vtable(self):
+        self.function_contexts = dict([(f.name, FunctionContext(f, self)) for f in self.cls.functions()])
 
         self.vtable_entries = []
         new_funcs: List[FunctionContext] = []
         if self.cls.base:
-            assert base_context
-            self.base_vtable_identifier = base_context.vtable_identifier
-            self.vtable_entries.extend(base_context.vtable_entries)
-            for func_context in self.function_contexts:
+            assert self.base_context
+            self.base_vtable_identifier = self.base_context.vtable_identifier
+            self.vtable_entries.extend(self.base_context.vtable_entries)
+            for func_context in self.function_contexts.values():
                 found = False
                 for i, entry in enumerate(self.vtable_entries):
                     if entry.func_context.func.name == func_context.func.name:
@@ -79,18 +79,18 @@ class ClassContext:
                 if not found:
                     new_funcs.append(func_context)
         else:
-            new_funcs.extend(self.function_contexts)
+            new_funcs.extend(self.function_contexts.values())
 
         for func_context in new_funcs:
             self.vtable_entries.append(VtableEntry(func_context))
 
     def get_function_context(self, what: Union[str, GDScriptFunction]) -> FunctionContext:
-        for func_context in self.function_contexts:
-            if isinstance(what, GDScriptFunction):
+        if isinstance(what, str):
+            return self.function_contexts[what]
+
+        if isinstance(what, GDScriptFunction):
+            for func_context in self.function_contexts.values():
                 if func_context.func == what:
-                    return func_context
-            elif isinstance(what, str):
-                if func_context.func.name == what:
                     return func_context
 
         raise Exception("function not found")
@@ -126,17 +126,22 @@ class GDNativeCodeGen:
     def _initialize_contexts(self):
         def make_context(cls: GDScriptClass, depth: int):
             print(f"make_context {depth} {cls.name}")
-            self.class_contexts[cls.type_id] = ClassContext(cls)
+            self.class_contexts[cls.type_id] = ClassContext(cls, self.class_contexts.get(cls.base.type_id, None) if cls.base else None)
 
         def make_vtable(cls: GDScriptClass, depth: int):
             print(f"make_vtable {depth} {cls.name}")
             context = self.class_contexts[cls.type_id]
-            base_context = self.class_contexts.get(cls.base.type_id) if cls.base else None
-            context.initialize_vtable(base_context)
+            context.initialize_vtable()
         
+        def initialize_members(cls: GDScriptClass, depth: int):
+            print(f"initialize_members {depth} {cls.name}")
+            context = self.class_contexts[cls.type_id]
+            context.initialize_members()
+
         self.class_contexts = {}
         self.project.visit_classes_in_dependency_order(make_context)
         self.project.visit_classes_in_dependency_order(make_vtable)
+        self.project.visit_classes_in_dependency_order(initialize_members)
 
     def _apply_transformations(self):
         for transform in self.transforms:
@@ -154,33 +159,8 @@ class GDNativeCodeGen:
 
             def iterate_data(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
-                base_struct_tag = "class_base_t" # class_base_t is defined in gd2c.h
-                if cls.base:
-                    base_context = self.class_contexts[cls.base.type_id]
-                    base_struct_tag = base_context.struct_tag
-
-                header.write(f"""
-                    method_wrapper_ptr_t {class_context.vtable_wrappers_identifier}[{len(class_context.vtable_entries)}];
-                    method_ptr_t {class_context.vtable_methods_identifier}[{len(class_context.vtable_entries)}];
-                    godot_string {class_context.vtable_method_names_identifier}[{len(class_context.vtable_entries)}];
-                    struct vtable_t {class_context.vtable_identifier};
-                    struct {class_context.struct_tag} {{
-                        union {{
-                            struct {base_struct_tag};
-                        }};
-                """)
-
-                for member in sorted(list(cls.members()), key=lambda c: c.index):
-                    header.write(f"""godot_variant member_{member.index};\n""")
-
-                header.write(f"""
-                    }};
-                """)
-
-                for constant in cls.constants():
-                    header.write(f"""godot_variant {cls.name}_const_{constant.name};\n""")
-
-                header.write(f"""int {class_context.constants_initialized_identifier} = 0;\n""")
+                codegen.transpile_struct(header)
+                codegen.transpile_constant_declarations(header)
 
                 for func in cls.functions():
                     if func.len_constants:
@@ -190,7 +170,7 @@ class GDNativeCodeGen:
 
             def iterate_function(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
-                for func_context in class_context.function_contexts:
+                for func_context in class_context.function_contexts.values():
                     header.write(f"""
                         godot_variant {func_context.function_identifier}(
                             godot_object* p_instance,
@@ -216,7 +196,7 @@ class GDNativeCodeGen:
 
             def iterate_function(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
-                for func_context in class_context.function_contexts:
+                for func_context in class_context.function_contexts.values():
                     codegen = FunctionCodegen(func_context)
                     codegen.transpile(impl)
 
@@ -247,7 +227,7 @@ class GDNativeCodeGen:
                         godot_instance_method method = {{ NULL, NULL, NULL }};
                         method.method = &{entry.func_context.function_identifier};
                         godot_method_attributes attributes = {{ GODOT_METHOD_RPC_MODE_DISABLED }};
-                        nativescript10->godot_nativescript_register_method(p_handle, "{cls.name}", "{entry.func_context.func.name}", attributes, method);
+                        nativescript10->godot_nativescript_register_method(p_handle, "{cls.name}", "{entry.func_context.func.name}", &attributes, method);
                     }}
                 """)
 
@@ -266,11 +246,18 @@ class GDNativeCodeGen:
                     }}
                 """)
 
-            impl.write(f"""
-                /********************
-                IMPLEMENT PROPERTIES
-                *********************/    
-            """)
+            for member_context in class_context.member_contexts.values():
+                impl.write(f"""
+                    {{
+                        godot_property_set_func setter = {{ NULL, NULL, NULL }};
+                        setter.set_func = &{member_context.setter_identifier};
+                        godot_property_get_func getter = {{ NULL, NULL, NULL }};
+                        getter.get_func = &{member_context.getter_identifier};
+                        godot_property_attributes attributes = {{ GODOT_METHOD_RPC_MODE_DISABLED }};
+                        nativescript10->godot_nativescript_register_property(p_handle, "{member_context.member_identifier}", "{member_context.path}", &attributes, setter, getter);
+                    }}
+                """)
+
 
             impl.write(f"""
                 /********************

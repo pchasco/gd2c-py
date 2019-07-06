@@ -53,6 +53,7 @@ OPCODE_DESTROY = 1002
 OPCODE_UNBOX = 1003
 OPCODE_DEFINE = 1004
 OPCODE_INITIALIZE = 1005
+OPCODE_REAL_RETURN = 1006
 
 # Comparison
 OPERATOR_EQUAL = 0
@@ -739,6 +740,13 @@ class InitializeGDScriptOp(PseudoGDScriptOp):
     def __str__(self):
         return f"INIT {self.address}"
 
+class RealReturnGDScriptOp(PseudoGDScriptOp):
+    def __init__(self):
+        super().__init__(OPCODE_REAL_RETURN)
+
+    def __str__(self):
+        return f"RRETURN"
+
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,
     OPCODE_EXTENDSTEST: None,
@@ -786,7 +794,8 @@ _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDS
     OPCODE_BOX: None,
     OPCODE_DESTROY: None,
     OPCODE_UNBOX: None,
-    OPCODE_INITIALIZE: None
+    OPCODE_INITIALIZE: None,
+    OPCODE_REAL_RETURN: None
 }
 
 def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> GDScriptOp:

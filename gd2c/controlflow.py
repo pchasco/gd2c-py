@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet, Any, Callable
-from gd2c.bytecode import GDScriptOp, DefineGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
+from gd2c.bytecode import GDScriptOp, DefineGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp, RealReturnGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
 
@@ -364,8 +364,10 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
         entry_node.block.append_op(DefineGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, p.index)))
     entry_node.block.append_op(JumpGDScriptOp(0))
 
+    # Build exit node
     exit_node = ControlFlowGraphNode('__exit', BasicBlock())
     exit_node.address = EXIT_NODE_ADDRESS
+    exit_node.block.append_op(RealReturnGDScriptOp())
 
     # Identify jump targets which always begin new blocks
 

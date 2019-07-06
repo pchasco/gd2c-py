@@ -49,7 +49,6 @@ class FunctionCodegen:
         self._transpile_nodes(file)
 
         file.write("""
-                return __return_value;
             }
         """)
 
@@ -118,7 +117,7 @@ class FunctionCodegen:
         def opcode_return(op: ReturnGDScriptOp):
             file.write(f"""
                 api10->godot_variant_new_copy(&__return_value, {node.variable(op.source).address_of()});
-                goto __exit;            
+                // next statement should be a goto __exit;            
             """)
 
         def opcode_destroy(op: DestroyGDScriptOp):
@@ -129,6 +128,11 @@ class FunctionCodegen:
         def opcode_initialize(op: InitializeyGDScriptOp):
             file.write(f"""
                 api10->godot_variant_new_nil({node.variable(op.address).address_of()});
+            """)
+
+        def opcode_real_return(op: RealReturnGDScriptOp):
+            file.write(f"""
+                return __return_value;
             """)
                 
         if op.opcode == OPCODE_JUMP:
@@ -149,6 +153,8 @@ class FunctionCodegen:
             opcode_destroy(op) # type: ignore
         elif op.opcode == OPCODE_INITIALIZE:
             opcode_initialize(op) # type: ignore
+        elif op.opcode == OPCODE_REAL_RETURN:
+            opcode_real_return(op) # type: ignore
         else:
             file.write(f"// {str(op)};\n")
 
