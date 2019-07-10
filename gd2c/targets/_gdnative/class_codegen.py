@@ -41,9 +41,9 @@ def transpile_vtable(class_context: ClassContext, writer: IO):
                         &{class_context.base_vtable_identifier}, 
                         {class_context.cls.type_id}, 
                         {len(class_context.vtable_entries)},
-                        {class_context.vtable_wrappers_identifier},
-                        {class_context.vtable_wrappers_identifier}, 
-                        (void*)0);
+                        (void *)0,
+                        {class_context.vtable_methods_identifier},
+                        {class_context.vtable_method_names_identifier});
     """)
 
     for i, entry in enumerate(class_context.vtable_entries):
@@ -52,7 +52,6 @@ def transpile_vtable(class_context: ClassContext, writer: IO):
                 {i},
                 "{entry.func_context.func.name}",
                 {entry.func_context.function_identifier},
-                (void*)0,
                 (void*)0);
         """)
 

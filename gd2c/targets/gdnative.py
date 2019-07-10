@@ -73,12 +73,17 @@ class GDNativeCodeGen:
                         header.write(f"""godot_variant {func_context.constants_array_identifier}[{func.len_constants}];\n""")
                         header.write(f"""int {func_context.constants_initialized_identifier} = 0;\n""")
 
+            def iterate_property_signatures(cls: GDScriptClass, depth: int):
+                class_context = self.class_contexts[cls.type_id]
+                class_codegen.transpile_property_signatures(class_context, header)             
+
             def iterate_function_signatures(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
                 for func_context in class_context.function_contexts.values():
                     function_codegen.transpile_signature(func_context, header)
 
             self.project.visit_classes_in_dependency_order(iterate_data_declarations)
+            self.project.visit_classes_in_dependency_order(iterate_property_signatures)
             self.project.visit_classes_in_dependency_order(iterate_function_signatures)
 
             header.write(f"""
@@ -92,12 +97,14 @@ class GDNativeCodeGen:
                 #include "gd2c.h"
             """)
 
-            def iterate_function(cls: GDScriptClass, depth: int):
+            def visitor(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
                 for func_context in class_context.function_contexts.values():
                     function_codegen.transpile_function(func_context, impl)
+                
+                class_codegen.transpile_vtable(class_context, impl)
 
-            self.project.visit_classes_in_dependency_order(iterate_function)
+            self.project.visit_classes_in_dependency_order(visitor)
 
             self._transpile_nativescript_registrations(impl)
 
@@ -154,13 +161,6 @@ class GDNativeCodeGen:
                         nativescript10->godot_nativescript_register_property(p_handle, "{member_context.member_identifier}", "{member_context.path}", &attributes, setter, getter);
                     }}
                 """)
-
-
-            impl.write(f"""
-                /********************
-                INITIALIZE VTABLE
-                *********************/    
-            """)
 
         self.project.visit_classes_in_dependency_order(visitor)
 
