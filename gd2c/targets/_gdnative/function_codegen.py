@@ -46,7 +46,10 @@ def transpile_function(function_context: FunctionContext, file: IO):
         file.write(f"""
                 {function_context.constants_initialized_identifier} = 1;            
             }}
+        """)
 
+    if function_context.func.len_stack_array > 0:
+        file.write(f"""
             godot_variant stack[{function_context.func.len_stack_array}];
         """)
 

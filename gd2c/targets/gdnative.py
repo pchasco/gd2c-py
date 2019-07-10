@@ -95,6 +95,7 @@ class GDNativeCodeGen:
         with p.open(mode="w") as impl:
             impl.write(f"""
                 #include "gd2c.h"
+                #include "godotproject.h"
             """)
 
             def visitor(cls: GDScriptClass, depth: int):

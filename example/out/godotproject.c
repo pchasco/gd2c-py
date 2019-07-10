@@ -1,5 +1,6 @@
 
                 #include "gd2c.h"
+                #include "godotproject.h"
             
         godot_variant Class_1_func__init(
             godot_object* p_instance,
@@ -32,7 +33,7 @@
             
                 Class_1__init_constants_initialized = 1;            
             }
-
+        
             godot_variant stack[4];
         __entry:
 // DEFINE 67108864;
@@ -109,7 +110,7 @@ __exit:
             
                 Class_1_if_else_constants_initialized = 1;            
             }
-
+        
             godot_variant stack[2];
         __entry:
 // DEFINE 67108864;
@@ -163,12 +164,12 @@ __exit:
             __flag = api10->godot_variant_as_bool(&stack[0]);
             if (__flag) goto _30;
             goto _25;
-        _30:
-goto _39;
-_25:
+        _25:
 
             api10->godot_variant_new_copy(p_args[0], &Class_1_if_else_constants[3]);
         goto _30;
+_30:
+goto _39;
 
         }
     
@@ -207,7 +208,7 @@ _25:
             
                 Class_1_diamond_dom_constants_initialized = 1;            
             }
-
+        
             godot_variant stack[2];
         __entry:
 // DEFINE 67108864;
@@ -306,7 +307,7 @@ __exit:
             
                 Class_1_if_not_nested_constants_initialized = 1;            
             }
-
+        
             godot_variant stack[2];
         __entry:
 // DEFINE 67108864;
@@ -328,7 +329,11 @@ _0:
             __flag = api10->godot_variant_as_bool(&stack[0]);
             if (__flag) goto _15;
             goto _10;
-        _15:
+        _10:
+
+            api10->godot_variant_new_copy(p_args[0], &Class_1_if_not_nested_constants[1]);
+        goto _15;
+_15:
 
             api10->godot_variant_new_copy(&__return_value, p_args[0]);
             // next statement should be a goto __exit;            
@@ -340,11 +345,7 @@ __exit:
             api10->godot_variant_destroy(&stack[1]);
         
             return __return_value;
-        _10:
-
-            api10->godot_variant_new_copy(p_args[0], &Class_1_if_not_nested_constants[1]);
-        goto _15;
-
+        
         }
     
         godot_variant Class_1_func_method1(
@@ -366,7 +367,7 @@ __exit:
             
                 Class_1_method1_constants_initialized = 1;            
             }
-
+        
             godot_variant stack[1];
         __entry:
 // DEFINE 67108864;
@@ -439,6 +440,8 @@ __exit:
             godot_bool __flag;   
             godot_variant __return_value;
             api10->godot_variant_new_nil(&__return_value);
+        
+            godot_variant stack[1];
         __entry:
 
             api10->godot_variant_new_nil(&stack[0]);
@@ -465,6 +468,8 @@ __exit:
             godot_bool __flag;   
             godot_variant __return_value;
             api10->godot_variant_new_nil(&__return_value);
+        
+            godot_variant stack[1];
         __entry:
 
             api10->godot_variant_new_nil(&stack[0]);
@@ -499,7 +504,7 @@ __exit:
             
                 Class_3_method1_constants_initialized = 1;            
             }
-
+        
             godot_variant stack[1];
         __entry:
 // DEFINE 67108864;
@@ -706,18 +711,6 @@ __exit:
                     }
                 
                     {
-                        godot_string name = api10->godot_string_chars_to_utf8("signal1");
-                        godot_signal signal = {
-                            name,
-                            0,
-                            NULL,
-                            0,
-                            NULL
-                        };
-                        nativescript10->godot_nativescript_register_signal(p_handle, "signal1", &signal);
-                    }
-                
-                    {
                         godot_string name = api10->godot_string_chars_to_utf8("signal2");
                         godot_signal signal = {
                             name,
@@ -727,6 +720,18 @@ __exit:
                             NULL
                         };
                         nativescript10->godot_nativescript_register_signal(p_handle, "signal2", &signal);
+                    }
+                
+                    {
+                        godot_string name = api10->godot_string_chars_to_utf8("signal1");
+                        godot_signal signal = {
+                            name,
+                            0,
+                            NULL,
+                            0,
+                            NULL
+                        };
+                        nativescript10->godot_nativescript_register_signal(p_handle, "signal1", &signal);
                     }
                 
             }

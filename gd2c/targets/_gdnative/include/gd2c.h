@@ -2,6 +2,12 @@
 #define __GD2C_H__
 
 #include <assert.h>
+#include <gdnative_api_struct.gen.h>
+
+godot_gdnative_core_api_struct *api10 = (void *)0;
+godot_gdnative_core_1_1_api_struct *api11 = (void *)0;
+godot_gdnative_ext_nativescript_api_struct *nativescript10 = (void *)0;
+godot_gdnative_ext_nativescript_1_1_api_struct *nativescript11 = (void *)0;
 
 typedef godot_variant (*method_wrapper_ptr_t)(godot_object *, void *, void *, int, godot_variant **);
 typedef void (*method_ptr_t)();
@@ -68,5 +74,16 @@ struct class_base_t {
     struct vtable_t *__vtable;
     godot_variant __self;
 };
+
+
+struct gd2c_api {
+    void GDAPI (*godot_variant_from_chars)(godot_variant *dest, const char *src);
+    int GDAPI (*godot_variant_len)(const godot_variant *src);
+    void GDAPI (*godot_print)(int arg_count, const godot_variant **args);
+    void GDAPI (*godot_variant_decode)(godot_variant *dest, const uint8_t *data, int length, int variant_type, godot_bool unsure);
+};
+
+struct gd2c_api __gd2c;
+struct gd2c_api *gd2c = &__gd2c;
 
 #endif
