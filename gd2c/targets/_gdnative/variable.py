@@ -14,7 +14,7 @@ class GDNativeLocalVariable(AbstractVariable):
         else:
             self.address = GDScriptAddress(address)
 
-    def value(self, ) -> str:
+    def value(self) -> str:
         if self.address.mode in (ADDRESS_MODE_STACK, ADDRESS_MODE_STACKVARIABLE):
             len_parameters = self._func_context.func.len_parameters
             if self.address.offset < len_parameters:
