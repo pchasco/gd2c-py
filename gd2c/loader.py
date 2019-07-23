@@ -46,6 +46,7 @@ class JsonGDScriptLoader:
             func.stack_size = int(entry["stack_size"])
             func.default_arguments_jump_table = list(map(lambda x: int(x), entry["default_arguments"]))
             func.return_vtype = VariantType.get(int(entry["return_type"]["type"]))
+            func.global_names = entry["global_names"]
 
             for pindex, pentry in enumerate(entry["parameters"]):
                 param = GDScriptFunctionParameter(

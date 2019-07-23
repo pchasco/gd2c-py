@@ -20,6 +20,7 @@ class GDNativeCodeGen:
         self.transforms = [
             transform.insert_initializers_transformation,
             transform.insert_destructors_transformation,
+            transform.replace_init_calls_with_noop_transformation,
             transform.map_variables_transformation
         ]
 

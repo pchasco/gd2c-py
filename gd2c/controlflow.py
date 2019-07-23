@@ -83,6 +83,14 @@ class BasicBlock:
             self._ops.insert(index, op)
             index += 1
 
+    def replace_op(self, existing_op: GDScriptOp, replacement_op: GDScriptOp):
+        """Replaces the specified op with a new op"""
+        self.insert_ops_before(existing_op, [replacement_op])
+
+    def remove_op(self, existing_op: GDScriptOp):
+        """Removes the specified op"""
+        self._ops.remove(existing_op)
+
     def replace_branch_address(self, old_addr: int, new_addr: int):
         """Change any instance of old_addr in a branch to new_addr"""
         for op in self._ops:

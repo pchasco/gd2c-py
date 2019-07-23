@@ -10,6 +10,7 @@ class FunctionContext:
     constants_initialized_identifier: str
     function_identifier: str
     paramters_identifier: str
+    global_names_identifier: str
     cfg: ControlFlowGraph
 
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
@@ -19,13 +20,16 @@ class FunctionContext:
         self.constants_initialized_identifier = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
         self.function_identifier = f"{class_context.cls.name}_func_{self.func.name}"
         self.parameters_identifier = "p_args"
+        self.global_names_identifier = f"{class_context.cls.name}_global_names"
 
         self.cfg = build_control_flow_graph(func)
 
 class VtableEntry:
     func_context: FunctionContext
+    index: int
 
-    def __init__(self, func: FunctionContext):
+    def __init__(self, index: int, func: FunctionContext):
+        self.index = index
         self.func_context = func
 
 class MemberContext:
@@ -103,7 +107,7 @@ class ClassContext:
                 found = False
                 for i, entry in enumerate(self.vtable_entries):
                     if entry.func_context.func.name == func_context.func.name:
-                        self.vtable_entries[i] = VtableEntry(func_context)
+                        self.vtable_entries[i] = VtableEntry(entry.index, func_context)
                         found = True
                         break
 
@@ -113,7 +117,14 @@ class ClassContext:
             new_funcs.extend(self.function_contexts.values())
 
         for func_context in new_funcs:
-            self.vtable_entries.append(VtableEntry(func_context))
+            self.vtable_entries.append(VtableEntry(len(self.vtable_entries), func_context))
+
+    def get_member_vtable_entry(self, method_name: str) -> Union[VtableEntry, None]:
+        for entry in self.vtable_entries:
+            if entry.func_context.func.name == method_name:
+                return entry
+        
+        return None
 
     def get_function_context(self, what: Union[str, GDScriptFunction]) -> FunctionContext:
         if isinstance(what, str):
