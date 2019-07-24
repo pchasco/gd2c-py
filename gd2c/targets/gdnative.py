@@ -80,6 +80,10 @@ class GDNativeCodeGen:
 
             def iterate_function_signatures(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
+                class_codegen.transpile_ctor_signature(class_context, header)
+                header.write(";\n")
+                class_codegen.transpile_dtor_signature(class_context, header)
+                header.write(";\n")
                 for func_context in class_context.function_contexts.values():
                     function_codegen.transpile_signature(func_context, header)
 
@@ -101,6 +105,8 @@ class GDNativeCodeGen:
 
             def visitor(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
+                class_codegen.transpile_ctor(class_context, impl)                
+                class_codegen.transpile_dtor(class_context, impl)                
                 for func_context in class_context.function_contexts.values():
                     function_codegen.transpile_function(func_context, impl)
                 
@@ -108,7 +114,84 @@ class GDNativeCodeGen:
 
             self.project.visit_classes_in_dependency_order(visitor)
 
+            self._transpile_gdnative_init(impl)
+            self._transpile_gdnative_terminate(impl)
             self._transpile_nativescript_registrations(impl)
+
+    def _transpile_gdnative_init(self, impl: IO):
+        impl.write(f"""
+            void GDN_EXPORT {self.project.export_prefix}_gdnative_init(godot_gdnative_init_options *p_options) {{
+                api10 = p_options->api_struct;
+                
+                const godot_gdnative_api_struct *extension = api10->next;
+                while (extension) {{
+                    if (extension->version.major == 1 && extension->version.minor == 1) {{
+                        api11 = (const godot_gdnative_core_1_1_api_struct*)extension;
+                    }}
+                    extension = extension->next;
+                }}
+
+                for (int i = 0; i < api10->num_extensions; ++i) {{
+                    switch (api10->extensions[i]->type) {{
+                        case GDNATIVE_EXT_NATIVESCRIPT: {{
+                            extension = api10->extensions[i];
+                            nativescript10 = (godot_gdnative_ext_nativescript_api_struct*)extension;
+                            while (extension) {{
+                                if (extension->version.major == 1 && extension->version.minor == 1) {{
+                                    nativescript11 = (const godot_gdnative_ext_nativescript_1_1_api_struct*)extension;
+                                }}
+                                extension = extension->next;
+                            }}
+                        }}; break;
+                        
+                        default:
+                            break;
+                    }}
+                }}
+
+                api10->godot_variant_new_nil(&__nil);
+            }}
+        
+        """)
+
+    def _transpile_gdnative_terminate(self, impl: IO):
+        impl.write(f"""
+            void GDN_EXPORT {self.project.export_prefix}_gdnative_terminate(godot_gdnative_terminate_options *p_options) {{
+                api10->godot_variant_destroy(&__nil);
+        """)
+
+        for class_context in self.class_contexts.values():
+            impl.write(f"""
+                if (0 != {class_context.constants_initialized_identifier}) {{
+            """)
+            for i in range(class_context.cls.len_constants):
+                impl.write(f"""
+                    api10->godot_variant_destroy(&{class_context.constants_array_identifier}[{i}]);
+                """)
+                
+            impl.write(f"""
+                }}
+            """)
+
+            for func in class_context.cls.functions():
+                function_context = class_context.get_function_context(func.name)
+                assert function_context
+                impl.write(f"""
+                    if (0 != {function_context.constants_initialized_identifier}) {{
+                """)
+
+                for i in range(function_context.func.len_constants):
+                    impl.write(f"""
+                        api10->godot_variant_destroy(&{function_context.constants_array_identifier}[{i}]);
+                    """)
+
+                impl.write(f"""
+                    }}
+                """)
+
+        impl.write(f"""
+            }}
+        """)
 
     def _transpile_nativescript_registrations(self, impl: IO):
         impl.write(f"""
@@ -133,7 +216,7 @@ class GDNativeCodeGen:
                         godot_instance_method method = {{ NULL, NULL, NULL }};
                         method.method = &{entry.func_context.function_identifier};
                         godot_method_attributes attributes = {{ GODOT_METHOD_RPC_MODE_DISABLED }};
-                        nativescript10->godot_nativescript_register_method(p_handle, "{cls.name}", "{entry.func_context.func.name}", &attributes, method);
+                        nativescript10->godot_nativescript_register_method(p_handle, "{cls.name}", "{entry.func_context.func.name}", attributes, method);
                     }}
                 """)
 

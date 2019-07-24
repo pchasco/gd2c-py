@@ -11,7 +11,7 @@ def transpile_struct(class_context: ClassContext, writer: IO):
 
     writer.write(f"""
         method_wrapper_ptr_t {class_context.vtable_wrappers_identifier}[{len(class_context.vtable_entries)}];
-        method_ptr_t {class_context.vtable_methods_identifier}[{len(class_context.vtable_entries)}];
+        variant_method_ptr_t {class_context.vtable_methods_identifier}[{len(class_context.vtable_entries)}];
         godot_string {class_context.vtable_method_names_identifier}[{len(class_context.vtable_entries)}];
         struct vtable_t {class_context.vtable_identifier};
         struct {class_context.struct_tag} {{
@@ -31,8 +31,9 @@ def transpile_struct(class_context: ClassContext, writer: IO):
     writer.write(f"""int {class_context.constants_initialized_identifier} = 0;\n""")
 
 def transpile_constant_declarations(class_context: ClassContext, writer: IO):
-    for constant in class_context.cls.constants():
-        writer.write(f"""godot_variant {class_context.cls.name}_const_{constant.name};\n""")
+    writer.write(f"""
+        godot_variant {class_context.constants_array_identifier}[{class_context.cls.len_constants}];
+    """)
 
 def transpile_vtable(class_context: ClassContext, writer: IO):
     writer.write(f"""
@@ -59,11 +60,48 @@ def transpile_vtable(class_context: ClassContext, writer: IO):
         }
     """)
 
+def transpile_ctor_signature(class_context: ClassContext, writer: IO):
+    writer.write(f"""
+        void *{class_context.ctor_identifier}(godot_object *p_instance, void *p_method_data)
+    """)
+
 def transpile_ctor(class_context: ClassContext, writer: IO):
-    pass
+    transpile_ctor_signature(class_context, writer)
+    writer.write(f"""{{
+            struct {class_context.struct_tag} *user_data = api10->godot_alloc(sizeof(struct {class_context.struct_tag}));
+            user_data->__vtable = &{class_context.vtable_identifier};
+            api10->godot_variant_new_object(&user_data->__self, p_instance);
+        """)
+
+    function_context = class_context.get_function_context("_init")
+    if function_context:
+        writer.write(f"""
+            {function_context.function_identifier}(
+                p_instance,
+                (void *)0,
+                user_data,
+                0,
+                (void*)0);
+        """)
+
+    writer.write(f"""
+            return user_data;
+        }}
+    """)
+
+def transpile_dtor_signature(class_context: ClassContext, writer: IO):
+    writer.write(f"""
+        void {class_context.dtor_identifier}(godot_object *p_instance, void *p_method_data, struct {class_context.struct_tag} *p_user_data)
+    """)
 
 def transpile_dtor(class_context: ClassContext, writer: IO):
-    pass
+    transpile_dtor_signature(class_context, writer)
+    writer.write(f"""
+        {{
+            api10->godot_variant_destroy(&p_user_data->__self);
+            api10->godot_free(p_user_data);
+        }}
+    """)
 
 def transpile_property_implementations(class_context: ClassContext, writer: IO):
     own_members = [m.name for m in class_context.cls.own_members()]

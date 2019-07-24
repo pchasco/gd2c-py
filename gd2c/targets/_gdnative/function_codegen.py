@@ -165,9 +165,9 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         # args array if necessary, otherwise just use a null ptr
         if op.arg_count > 0:
             file.write(f"""
-                godot_variant args[] = {{ {", ".join([
+                godot_variant *args[] = {{ {", ".join([
                     node.variable(addr).address_of() for addr in op.args
-                ])} }}
+                ])} }};
             """)     
             args = "args"        
         else:
@@ -196,7 +196,7 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         if vtable_entry:                
             base_chain = "base->" if call_base else ""
             file.write(f"""
-                    p_user_data->__vtable->{base_chain}methods[{op.name_index}](
+                    p_user_data->__vtable->{base_chain}methods[{vtable_entry.index}](
                         p_instance,
                         p_method_data,
                         p_user_data,

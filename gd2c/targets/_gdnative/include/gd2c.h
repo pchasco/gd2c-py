@@ -10,6 +10,7 @@ godot_gdnative_ext_nativescript_api_struct *nativescript10 = (void *)0;
 godot_gdnative_ext_nativescript_1_1_api_struct *nativescript11 = (void *)0;
 
 typedef godot_variant (*method_wrapper_ptr_t)(godot_object *, void *, void *, int, godot_variant **);
+typedef godot_variant (*variant_method_ptr_t)(godot_object *, void *, void *, int, godot_variant **);
 typedef void (*method_ptr_t)();
 
 typedef struct vtable_t {
@@ -17,11 +18,11 @@ typedef struct vtable_t {
     int type_id;
     int method_count;
     method_wrapper_ptr_t *wrappers;
-    method_ptr_t *methods;
+    variant_method_ptr_t *methods;
     godot_string *methods_by_name;
 } vtable_t;
 
-void vtable_init(vtable_t *vtable, vtable_t *base, int type_id, int method_count, method_wrapper_ptr_t *wrappers, method_ptr_t *methods, godot_string *methods_by_name) {
+void vtable_init(vtable_t *vtable, vtable_t *base, int type_id, int method_count, method_wrapper_ptr_t *wrappers, variant_method_ptr_t *methods, godot_string *methods_by_name) {
     vtable->base = base;
     vtable->type_id = type_id;
     vtable->method_count = method_count;
@@ -31,7 +32,7 @@ void vtable_init(vtable_t *vtable, vtable_t *base, int type_id, int method_count
 }
 
 #define VTABLE_METHOD(INSTANCE, METHOD_INDEX, METHOD_NAME, METHOD, METHOD_WRAPPER) \
-   INSTANCE.methods[METHOD_INDEX] = (method_ptr_t)METHOD; \
+   INSTANCE.methods[METHOD_INDEX] = (variant_method_ptr_t)METHOD; \
    INSTANCE.wrappers[METHOD_INDEX] = (method_wrapper_ptr_t)METHOD_WRAPPER; \
    //INSTANCE.methods_by_name[METHOD_INDEX] = api->godot_string_chars_to_utf8(METHOD_NAME);
 /*
@@ -85,5 +86,7 @@ struct gd2c_api {
 
 struct gd2c_api __gd2c;
 struct gd2c_api *gd2c = &__gd2c;
+
+godot_variant __nil;
 
 #endif

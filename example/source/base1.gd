@@ -22,3 +22,9 @@ func diamond_dom(a):
 	a = a * 5
 	return a
 
+func call_method():
+	called_method(1, 2)
+
+func called_method(a, b):
+	return a * b
+

@@ -60,6 +60,7 @@ class ClassContext:
     base_vtable_identifier: str
     vtable_init_function_identifier: str
     constants_initialized_identifier: str
+    constants_array_identifier: str
     ctor_identifier: str
     dtor_identifier: str
 
@@ -77,6 +78,7 @@ class ClassContext:
         self.base_vtable_identifier = "vtable"
         self.vtable_init_function_identifier = f"{cls.name}_vtable_init"
         self.constants_initialized_identifier = f"{cls.name}_constants_initialized"
+        self.constants_array_identifier = f"{cls.name}_constants"
         self.ctor_identifier = f"{cls.name}_ctor"
         self.dtor_identifier = f"{cls.name}_dtor"
 
@@ -126,7 +128,7 @@ class ClassContext:
         
         return None
 
-    def get_function_context(self, what: Union[str, GDScriptFunction]) -> FunctionContext:
+    def get_function_context(self, what: Union[str, GDScriptFunction]) -> Optional[FunctionContext]:
         if isinstance(what, str):
             return self.function_contexts[what]
 
