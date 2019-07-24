@@ -12,7 +12,7 @@ def __transpile_signature(function_context: FunctionContext) -> str:
         godot_variant {function_context.function_identifier}(
             godot_object* p_instance,
             void* p_method_data,
-            struct {function_context.class_context.struct_tag}* p_user_data,
+            void* _p_user_data,
             int p_num_args,
             godot_variant** p_args)"""
 
@@ -24,6 +24,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
     file.write(__transpile_signature(function_context))
     file.write(f"""
         {{   
+            struct {function_context.class_context.struct_tag} *p_user_data = (struct {function_context.class_context.struct_tag}*)_p_user_data;
             godot_bool __flag;   
             godot_variant_call_error __error;
             godot_variant __return_value;

@@ -161,33 +161,35 @@ class GDNativeCodeGen:
         """)
 
         for class_context in self.class_contexts.values():
-            impl.write(f"""
-                if (0 != {class_context.constants_initialized_identifier}) {{
-            """)
-            for i in range(class_context.cls.len_constants):
+            if class_context.cls.len_constants > 0:
                 impl.write(f"""
-                    api10->godot_variant_destroy(&{class_context.constants_array_identifier}[{i}]);
+                    if (0 != {class_context.constants_initialized_identifier}) {{
                 """)
-                
-            impl.write(f"""
-                }}
-            """)
+                for i in range(class_context.cls.len_constants):
+                    impl.write(f"""
+                        api10->godot_variant_destroy(&{class_context.constants_array_identifier}[{i}]);
+                    """)
+                    
+                impl.write(f"""
+                    }}
+                """)
 
             for func in class_context.cls.functions():
                 function_context = class_context.get_function_context(func.name)
                 assert function_context
-                impl.write(f"""
-                    if (0 != {function_context.constants_initialized_identifier}) {{
-                """)
-
-                for i in range(function_context.func.len_constants):
+                if function_context.func.len_constants:
                     impl.write(f"""
-                        api10->godot_variant_destroy(&{function_context.constants_array_identifier}[{i}]);
+                        if (0 != {function_context.constants_initialized_identifier}) {{
                     """)
 
-                impl.write(f"""
-                    }}
-                """)
+                    for i in range(function_context.func.len_constants):
+                        impl.write(f"""
+                            api10->godot_variant_destroy(&{function_context.constants_array_identifier}[{i}]);
+                        """)
+
+                    impl.write(f"""
+                        }}
+                    """)
 
         impl.write(f"""
             }}

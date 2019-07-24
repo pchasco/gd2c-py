@@ -4,10 +4,10 @@
 #include <assert.h>
 #include <gdnative_api_struct.gen.h>
 
-godot_gdnative_core_api_struct *api10 = (void *)0;
-godot_gdnative_core_1_1_api_struct *api11 = (void *)0;
-godot_gdnative_ext_nativescript_api_struct *nativescript10 = (void *)0;
-godot_gdnative_ext_nativescript_1_1_api_struct *nativescript11 = (void *)0;
+const godot_gdnative_core_api_struct *api10 = (void *)0;
+const godot_gdnative_core_1_1_api_struct *api11 = (void *)0;
+const godot_gdnative_ext_nativescript_api_struct *nativescript10 = (void *)0;
+const godot_gdnative_ext_nativescript_1_1_api_struct *nativescript11 = (void *)0;
 
 typedef godot_variant (*method_wrapper_ptr_t)(godot_object *, void *, void *, int, godot_variant **);
 typedef godot_variant (*variant_method_ptr_t)(godot_object *, void *, void *, int, godot_variant **);

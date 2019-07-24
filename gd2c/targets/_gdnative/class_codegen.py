@@ -91,13 +91,14 @@ def transpile_ctor(class_context: ClassContext, writer: IO):
 
 def transpile_dtor_signature(class_context: ClassContext, writer: IO):
     writer.write(f"""
-        void {class_context.dtor_identifier}(godot_object *p_instance, void *p_method_data, struct {class_context.struct_tag} *p_user_data)
+        void {class_context.dtor_identifier}(godot_object *p_instance, void *p_method_data, void *_p_user_data)
     """)
 
 def transpile_dtor(class_context: ClassContext, writer: IO):
     transpile_dtor_signature(class_context, writer)
     writer.write(f"""
         {{
+            struct {class_context.struct_tag} *p_user_data = (struct {class_context.struct_tag}*)_p_user_data;
             api10->godot_variant_destroy(&p_user_data->__self);
             api10->godot_free(p_user_data);
         }}
@@ -113,8 +114,9 @@ def transpile_property_implementations(class_context: ClassContext, writer: IO):
             godot_variant {member_context.getter_identifier}(
                 godot_object *p_instance,
                 void *p_method_data,
-                struct {class_context.struct_tag} *p_user_data
+                void *_p_user_data
             ) {{
+                struct {class_context.struct_tag} *p_user_data = (struct {class_context.struct_tag}*)_p_user_data;
                 godot_variant value;
                 api10->godot_variant_new_copy(&value, &p_user_data->{member_context.member_identifier});
                 return value;
@@ -123,9 +125,10 @@ def transpile_property_implementations(class_context: ClassContext, writer: IO):
             void {member_context.setter_identifier}(
                 godot_object *p_instance,
                 void *p_method_data,
-                struct {class_context.struct_tag} *p_user_data,
+                void *_p_user_data,
                 godot_variant *p_value
             ) {{
+                struct {class_context.struct_tag} p_user_data = (struct {class_context.struct_tag}*)_p_user_data;
                 api10->godot_variant_new_copy(&p_user_data->{member_context.member_identifier}, p_value);
             }}
         """)
@@ -140,13 +143,13 @@ def transpile_property_signatures(class_context: ClassContext, writer: IO):
             godot_variant {member_context.getter_identifier}(
                 godot_object *p_instance,
                 void *p_method_data,
-                struct {class_context.struct_tag} *p_user_data
+                void *_p_user_data
             );
 
             void {member_context.setter_identifier}(
                 godot_object *p_instance,
                 void *p_method_data,
-                struct {class_context.struct_tag} *p_user_data,
+                void *_p_user_data,
                 godot_variant *p_value
             );
         """)        
