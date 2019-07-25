@@ -21,7 +21,10 @@ def mark_assigned_parameters(project: Project) -> None:
     changed = False
 
     def visit_func(cls: GDScriptClass, func: GDScriptFunction):
+        nonlocal changed
         def visit(node):
+            nonlocal changed
+
             # First is a simple check to see if the value is set in the node.
             # if so then the parameter is assigned
             for p in func.parameters():
@@ -73,11 +76,10 @@ def mark_assigned_parameters(project: Project) -> None:
                         # callee may write to it.
                         for i, addr in enumerate(args):
                             pa = GDScriptAddress(addr)
-                            if pa.mode == ADDRESS_MODE_PARAMETER:
-                                tp = callee.parameters[i]
-                                assert tp
-                                if tp.is_assigned:
-                                    func.parameters[pa.offset].is_assigned = True  
+                            if pa.mode == ADDRESS_MODE_STACK or pa.mode == ADDRESS_MODE_STACKVARIABLE and pa.offset < func.len_parameters:
+                                tp = callee.parameter(i)
+                                if not tp.is_assigned:
+                                    func.parameter(pa.offset).is_assigned = True  
                                     changed = True                          
                     else:
                         # We cannot determine the callee, so we must

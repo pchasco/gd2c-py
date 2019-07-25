@@ -26,27 +26,6 @@
             api10->godot_free(p_user_data);
         }
     
-            godot_variant Class_1_get_member1(
-                godot_object *p_instance,
-                void *p_method_data,
-                void *_p_user_data
-            ) {
-                struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
-                godot_variant value;
-                api10->godot_variant_new_copy(&value, &p_user_data->member1);
-                return value;
-            }
-
-            void Class_1_set_member1(
-                godot_object *p_instance,
-                void *p_method_data,
-                void *_p_user_data,
-                godot_variant *p_value
-            ) {
-                struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
-                api10->godot_variant_new_copy(&p_user_data->member1, p_value);
-            }
-        
             godot_variant Class_1_get_member2(
                 godot_object *p_instance,
                 void *p_method_data,
@@ -66,6 +45,27 @@
             ) {
                 struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
                 api10->godot_variant_new_copy(&p_user_data->member2, p_value);
+            }
+        
+            godot_variant Class_1_get_member1(
+                godot_object *p_instance,
+                void *p_method_data,
+                void *_p_user_data
+            ) {
+                struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
+                godot_variant value;
+                api10->godot_variant_new_copy(&value, &p_user_data->member1);
+                return value;
+            }
+
+            void Class_1_set_member1(
+                godot_object *p_instance,
+                void *p_method_data,
+                void *_p_user_data,
+                godot_variant *p_value
+            ) {
+                struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
+                api10->godot_variant_new_copy(&p_user_data->member1, p_value);
             }
                 godot_variant Class_1_func__init(
             godot_object* p_instance,
@@ -122,31 +122,6 @@ __exit:
                     api10->godot_variant_destroy(&stack[3]);
                     return __return_value;
                 }
-            godot_variant Class_1_func_called_method(
-            godot_object* p_instance,
-            void* p_method_data,
-            void* _p_user_data,
-            int p_num_args,
-            godot_variant** p_args)        {   
-            struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
-            godot_bool __flag;   
-            godot_variant_call_error __error;
-            godot_variant __return_value;
-            api10->godot_variant_new_nil(&__return_value);
-                    godot_variant stack[1];
-        __entry:
-// DEFINE 100663296;
-// DEFINE 100663297;
-            api10->godot_variant_new_nil(&stack[0]);
-        goto _0;
-_0:
-api11->godot_variant_evaluate(8, p_args[0], p_args[1], &stack[0], &__flag);
-            api10->godot_variant_new_copy(&__return_value, &stack[0]);        
-        goto __exit;
-__exit:
-            api10->godot_variant_destroy(&stack[0]);
-                    return __return_value;
-                }
             godot_variant Class_1_func_diamond_dom(
             godot_object* p_instance,
             void* p_method_data,
@@ -199,8 +174,8 @@ api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[0], &
             __flag = api10->godot_variant_as_bool(&stack[0]);
             if (__flag) goto _32;
             goto _20;
-        _32:
-api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[3], &stack[1], &__flag);
+        _20:
+api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[2], &stack[1], &__flag);
             api10->godot_variant_new_copy(p_args[0], &stack[1]);
         goto _44;
 _44:
@@ -212,8 +187,8 @@ __exit:
             api10->godot_variant_destroy(&stack[0]);
                     api10->godot_variant_destroy(&stack[1]);
                     return __return_value;
-        _20:
-api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[2], &stack[1], &__flag);
+        _32:
+api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[3], &stack[1], &__flag);
             api10->godot_variant_new_copy(p_args[0], &stack[1]);
         goto _44;
         }
@@ -233,27 +208,59 @@ api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[2], &
                     uint8_t data[] = { 2,0,0,0,1,0,0,0 };
                     gd2c->godot_variant_decode(&Class_1_call_method_constants[0], data, 8, 2, true);
                 }
-                            {
-                    uint8_t data[] = { 2,0,0,0,2,0,0,0 };
-                    gd2c->godot_variant_decode(&Class_1_call_method_constants[1], data, 8, 2, true);
-                }
                             Class_1_call_method_constants_initialized = 1;            
             }
                     godot_variant stack[1];
         __entry:
 // DEFINE 67108864;
-// DEFINE 67108865;
+// DEFINE 100663296;
             api10->godot_variant_new_nil(&stack[0]);
         goto _0;
 _0:
             {
-                        godot_variant *args[] = { &Class_1_call_method_constants[0], &Class_1_call_method_constants[1] };
-            stack[0] = p_user_data->__vtable->methods[1](p_instance, p_method_data, p_user_data, 2, args);
+                        godot_variant *args[] = { &Class_1_call_method_constants[0], p_args[0] };
+            stack[0] = p_user_data->__vtable->methods[3](p_instance, p_method_data, p_user_data, 2, args);
 }
 // OPCODE_END
 goto __exit;
 __exit:
             api10->godot_variant_destroy(&stack[0]);
+                    return __return_value;
+                }
+            godot_variant Class_1_func_called_method(
+            godot_object* p_instance,
+            void* p_method_data,
+            void* _p_user_data,
+            int p_num_args,
+            godot_variant** p_args)        {   
+            struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t*)_p_user_data;
+            godot_bool __flag;   
+            godot_variant_call_error __error;
+            godot_variant __return_value;
+            api10->godot_variant_new_nil(&__return_value);
+                    if (0 == Class_1_called_method_constants_initialized) {
+                        {
+                    uint8_t data[] = { 2,0,0,0,1,0,0,0 };
+                    gd2c->godot_variant_decode(&Class_1_called_method_constants[0], data, 8, 2, true);
+                }
+                            Class_1_called_method_constants_initialized = 1;            
+            }
+                    godot_variant stack[2];
+        __entry:
+// DEFINE 67108864;
+// DEFINE 100663296;
+// DEFINE 100663297;
+            api10->godot_variant_new_nil(&stack[0]);
+                    api10->godot_variant_new_nil(&stack[1]);
+        goto _0;
+_0:
+            api10->godot_variant_new_copy(p_args[1], &Class_1_called_method_constants[0]);
+        api11->godot_variant_evaluate(8, p_args[0], p_args[1], &stack[0], &__flag);
+            api10->godot_variant_new_copy(&__return_value, &stack[0]);        
+        goto __exit;
+__exit:
+            api10->godot_variant_destroy(&stack[0]);
+                    api10->godot_variant_destroy(&stack[1]);
                     return __return_value;
                 }
     
@@ -274,20 +281,20 @@ __exit:
         
             VTABLE_METHOD(Class_1_vtable, 
                 1,
-                "called_method",
-                Class_1_func_called_method,
-                (void*)0);
-        
-            VTABLE_METHOD(Class_1_vtable, 
-                2,
                 "diamond_dom",
                 Class_1_func_diamond_dom,
                 (void*)0);
         
             VTABLE_METHOD(Class_1_vtable, 
-                3,
+                2,
                 "call_method",
                 Class_1_func_call_method,
+                (void*)0);
+        
+            VTABLE_METHOD(Class_1_vtable, 
+                3,
+                "called_method",
+                Class_1_func_called_method,
                 (void*)0);
         
         }
@@ -409,20 +416,20 @@ __exit:
         
             VTABLE_METHOD(Class_3_vtable, 
                 1,
-                "called_method",
-                Class_1_func_called_method,
-                (void*)0);
-        
-            VTABLE_METHOD(Class_3_vtable, 
-                2,
                 "diamond_dom",
                 Class_1_func_diamond_dom,
                 (void*)0);
         
             VTABLE_METHOD(Class_3_vtable, 
-                3,
+                2,
                 "call_method",
                 Class_1_func_call_method,
+                (void*)0);
+        
+            VTABLE_METHOD(Class_3_vtable, 
+                3,
+                "called_method",
+                Class_1_func_called_method,
                 (void*)0);
         
             VTABLE_METHOD(Class_3_vtable, 
@@ -493,7 +500,9 @@ api10->godot_variant_destroy(&Class_1_diamond_dom_constants[4]);
 }
 if (0 != Class_1_call_method_constants_initialized) {
 api10->godot_variant_destroy(&Class_1_call_method_constants[0]);
-api10->godot_variant_destroy(&Class_1_call_method_constants[1]);
+}
+if (0 != Class_1_called_method_constants_initialized) {
+api10->godot_variant_destroy(&Class_1_called_method_constants[0]);
 }
 if (0 != Class_3_method1_constants_initialized) {
 api10->godot_variant_destroy(&Class_3_method1_constants[0]);
@@ -519,13 +528,6 @@ api10->godot_variant_destroy(&Class_3_method1_constants[0]);
                 
                     {
                         godot_instance_method method = { NULL, NULL, NULL };
-                        method.method = &Class_1_func_called_method;
-                        godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
-                        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "called_method", attributes, method);
-                    }
-                
-                    {
-                        godot_instance_method method = { NULL, NULL, NULL };
                         method.method = &Class_1_func_diamond_dom;
                         godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
                         nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "diamond_dom", attributes, method);
@@ -536,6 +538,13 @@ api10->godot_variant_destroy(&Class_3_method1_constants[0]);
                         method.method = &Class_1_func_call_method;
                         godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
                         nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "call_method", attributes, method);
+                    }
+                
+                    {
+                        godot_instance_method method = { NULL, NULL, NULL };
+                        method.method = &Class_1_func_called_method;
+                        godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
+                        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "called_method", attributes, method);
                     }
                 
                     {
@@ -564,20 +573,20 @@ api10->godot_variant_destroy(&Class_3_method1_constants[0]);
                 
                     {
                         godot_property_set_func setter = { NULL, NULL, NULL };
-                        setter.set_func = &Class_1_set_member1;
-                        godot_property_get_func getter = { NULL, NULL, NULL };
-                        getter.get_func = &Class_1_get_member1;
-                        godot_property_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
-                        nativescript10->godot_nativescript_register_property(p_handle, "member1", "member1", &attributes, setter, getter);
-                    }
-                
-                    {
-                        godot_property_set_func setter = { NULL, NULL, NULL };
                         setter.set_func = &Class_1_set_member2;
                         godot_property_get_func getter = { NULL, NULL, NULL };
                         getter.get_func = &Class_1_get_member2;
                         godot_property_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
                         nativescript10->godot_nativescript_register_property(p_handle, "member2", "member2", &attributes, setter, getter);
+                    }
+                
+                    {
+                        godot_property_set_func setter = { NULL, NULL, NULL };
+                        setter.set_func = &Class_1_set_member1;
+                        godot_property_get_func getter = { NULL, NULL, NULL };
+                        getter.get_func = &Class_1_get_member1;
+                        godot_property_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
+                        nativescript10->godot_nativescript_register_property(p_handle, "member1", "member1", &attributes, setter, getter);
                     }
                 
                 {
@@ -597,13 +606,6 @@ api10->godot_variant_destroy(&Class_3_method1_constants[0]);
                 
                     {
                         godot_instance_method method = { NULL, NULL, NULL };
-                        method.method = &Class_1_func_called_method;
-                        godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
-                        nativescript10->godot_nativescript_register_method(p_handle, "Class_3", "called_method", attributes, method);
-                    }
-                
-                    {
-                        godot_instance_method method = { NULL, NULL, NULL };
                         method.method = &Class_1_func_diamond_dom;
                         godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
                         nativescript10->godot_nativescript_register_method(p_handle, "Class_3", "diamond_dom", attributes, method);
@@ -614,6 +616,13 @@ api10->godot_variant_destroy(&Class_3_method1_constants[0]);
                         method.method = &Class_1_func_call_method;
                         godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
                         nativescript10->godot_nativescript_register_method(p_handle, "Class_3", "call_method", attributes, method);
+                    }
+                
+                    {
+                        godot_instance_method method = { NULL, NULL, NULL };
+                        method.method = &Class_1_func_called_method;
+                        godot_method_attributes attributes = { GODOT_METHOD_RPC_MODE_DISABLED };
+                        nativescript10->godot_nativescript_register_method(p_handle, "Class_3", "called_method", attributes, method);
                     }
                 
                     {

@@ -70,6 +70,17 @@ class GDScriptFunction:
         for param in self._parameters.values():
             yield param
 
+    def parameter(self, what: Union[int, str]):
+        if isinstance(what, int):
+            return self._parameters[what]
+
+        if isinstance(what, str):
+            for parameter in self._parameters.values():
+                if parameter.name == what:
+                    return parameter
+        
+        raise Exception("parameter not found")
+
     @property
     def len_parameters(self) -> int:
         return len(self._parameters)
