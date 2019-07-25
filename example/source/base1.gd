@@ -26,5 +26,6 @@ func call_method():
 	called_method(1, 2)
 
 func called_method(a, b):
+	b = 1
 	return a * b
 
