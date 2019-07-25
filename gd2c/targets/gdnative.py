@@ -38,7 +38,7 @@ class GDNativeCodeGen:
         self._initialize_contexts()
         self._apply_transformations()
         self._transpile_header_file()
-        self._transpile_implementation()
+        self._transpile_c_file()
 
     def _initialize_contexts(self):
         def make_context(cls: GDScriptClass, depth: int):
@@ -95,28 +95,29 @@ class GDNativeCodeGen:
                 #endif
             """)           
     
-    def _transpile_implementation(self):
+    def _transpile_c_file(self):
         p = Path(self._output_path, "godotproject.c")
-        with p.open(mode="w") as impl:
-            impl.write(f"""
+        with p.open(mode="w") as writer:
+            writer.write(f"""
                 #include "gd2c.h"
                 #include "godotproject.h"
             """)
 
             def visitor(cls: GDScriptClass, depth: int):
                 class_context = self.class_contexts[cls.type_id]
-                class_codegen.transpile_ctor(class_context, impl)                
-                class_codegen.transpile_dtor(class_context, impl)                
+                class_codegen.transpile_ctor(class_context, writer)                
+                class_codegen.transpile_dtor(class_context, writer)       
+                class_codegen.transpile_property_implementations(class_context, writer)         
                 for func_context in class_context.function_contexts.values():
-                    function_codegen.transpile_function(func_context, impl)
+                    function_codegen.transpile_function(func_context, writer)
                 
-                class_codegen.transpile_vtable(class_context, impl)
+                class_codegen.transpile_vtable(class_context, writer)
 
             self.project.visit_classes_in_dependency_order(visitor)
 
-            self._transpile_gdnative_init(impl)
-            self._transpile_gdnative_terminate(impl)
-            self._transpile_nativescript_registrations(impl)
+            self._transpile_gdnative_init(writer)
+            self._transpile_gdnative_terminate(writer)
+            self._transpile_nativescript_registrations(writer)
 
     def _transpile_gdnative_init(self, impl: IO):
         impl.write(f"""
@@ -162,38 +163,23 @@ class GDNativeCodeGen:
 
         for class_context in self.class_contexts.values():
             if class_context.cls.len_constants > 0:
-                impl.write(f"""
-                    if (0 != {class_context.constants_initialized_identifier}) {{
-                """)
+                impl.write(f"""if (0 != {class_context.constants_initialized_identifier}) {{\n""")
                 for i in range(class_context.cls.len_constants):
-                    impl.write(f"""
-                        api10->godot_variant_destroy(&{class_context.constants_array_identifier}[{i}]);
-                    """)
-                    
-                impl.write(f"""
-                    }}
-                """)
+                    impl.write(f"""api10->godot_variant_destroy(&{class_context.constants_array_identifier}[{i}]);\n""")
+                impl.write(f"""}}\n""")
 
             for func in class_context.cls.functions():
                 function_context = class_context.get_function_context(func.name)
                 assert function_context
                 if function_context.func.len_constants:
-                    impl.write(f"""
-                        if (0 != {function_context.constants_initialized_identifier}) {{
-                    """)
+                    impl.write(f"""if (0 != {function_context.constants_initialized_identifier}) {{\n""")
 
                     for i in range(function_context.func.len_constants):
-                        impl.write(f"""
-                            api10->godot_variant_destroy(&{function_context.constants_array_identifier}[{i}]);
-                        """)
+                        impl.write(f"""api10->godot_variant_destroy(&{function_context.constants_array_identifier}[{i}]);\n""")
 
-                    impl.write(f"""
-                        }}
-                    """)
+                    impl.write(f"""}}\n""")
 
-        impl.write(f"""
-            }}
-        """)
+        impl.write(f"""}}\n""")
 
     def _transpile_nativescript_registrations(self, impl: IO):
         impl.write(f"""

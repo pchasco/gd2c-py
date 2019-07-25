@@ -128,7 +128,7 @@ def transpile_property_implementations(class_context: ClassContext, writer: IO):
                 void *_p_user_data,
                 godot_variant *p_value
             ) {{
-                struct {class_context.struct_tag} p_user_data = (struct {class_context.struct_tag}*)_p_user_data;
+                struct {class_context.struct_tag} *p_user_data = (struct {class_context.struct_tag}*)_p_user_data;
                 api10->godot_variant_new_copy(&p_user_data->{member_context.member_identifier}, p_value);
             }}
         """)

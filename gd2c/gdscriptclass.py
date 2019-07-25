@@ -39,6 +39,7 @@ class GDScriptFunctionParameter:
         self.name = name        
         self.vtype = VariantType.get(vtype)
         self.index = index
+        self.is_const = False
 
 class GDScriptFunction:
     TYPE_METHOD = 0

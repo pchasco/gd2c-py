@@ -25,6 +25,10 @@ class GDNativeLocalVariable(AbstractVariable):
             return f"{self._func_context.constants_array_identifier}[{self.address.offset}]"
         elif self.address.mode == ADDRESS_MODE_PARAMETER:
             return f"(*{self._func_context.parameters_identifier}[{self.address.offset}])"
+        elif self.address.mode == ADDRESS_MODE_MEMBER:
+            name = self._func_context.func.global_names[self.address.offset]
+            member = self._func_context.class_context.member_contexts[name]
+            return f"p_user_data->{member.member_identifier}"
 
         return str(self.address)
 
@@ -39,5 +43,8 @@ class GDNativeLocalVariable(AbstractVariable):
             return f"&{self._func_context.constants_array_identifier}[{self.address.offset}]"
         elif self.address.mode == ADDRESS_MODE_PARAMETER:
             return f"{self._func_context.parameters_identifier}[{self.address.offset}]"
+        elif self.address.mode == ADDRESS_MODE_MEMBER:
+            member = self._func_context.class_context.get_member_context(self.address.offset)
+            return f"&p_user_data->{member.member_identifier}"
 
         return str(self.address)

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from gd2c.targets.gdnative import FunctionContext
 
 def __transpile_signature(function_context: FunctionContext) -> str:
-    return f"""
+    return f"""\
         godot_variant {function_context.function_identifier}(
             godot_object* p_instance,
             void* p_method_data,
@@ -22,7 +22,7 @@ def transpile_signature(function_context: FunctionContext, file: IO):
 
 def transpile_function(function_context: FunctionContext, file: IO):
     file.write(__transpile_signature(function_context))
-    file.write(f"""
+    file.write(f"""\
         {{   
             struct {function_context.class_context.struct_tag} *p_user_data = (struct {function_context.class_context.struct_tag}*)_p_user_data;
             godot_bool __flag;   
@@ -33,7 +33,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
 
     # Initialize function local constants if first time function was called
     if function_context.func.len_constants > 0:
-        file.write(f"""
+        file.write(f"""\
             if (0 == {function_context.constants_initialized_identifier}) {{
         """) 
 
@@ -45,20 +45,20 @@ def transpile_function(function_context: FunctionContext, file: IO):
                 }}
             """) 
 
-        file.write(f"""
+        file.write(f"""\
                 {function_context.constants_initialized_identifier} = 1;            
             }}
         """)
 
     if function_context.func.len_stack_array > 0:
-        file.write(f"""
+        file.write(f"""\
             godot_variant stack[{function_context.func.len_stack_array}];
         """)
 
     __transpile_nodes(function_context, file)
 
-    file.write("""
-        }
+    file.write(f"""\
+        }}
     """)
 
 def __transpile_nodes(function_context: FunctionContext, file: IO):
@@ -88,7 +88,7 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         assert branch
         fallthrough = function_context.cfg.node_from_address(op.fallthrough)
         assert fallthrough
-        file.write(f"""
+        file.write(f"""\
             __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
             if (__flag) goto {branch.label};
             goto {fallthrough.label};
@@ -99,7 +99,7 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         assert branch
         fallthrough = function_context.cfg.node_from_address(op.fallthrough)
         assert fallthrough
-        file.write(f"""
+        file.write(f"""\
             __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
             if (!__flag) goto {branch.label};
             goto {fallthrough.label};
@@ -110,47 +110,45 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         pass
 
     def opcode_assign(op: AssignGDScriptOp):
-        file.write(f"""
+        file.write(f"""\
             api10->godot_variant_new_copy({node.variable(op.dest).address_of()}, {node.variable(op.source).address_of()});
         """)
 
     def opcode_assigntrue(op: AssignTrueGDScriptOp):
-        file.write(f"""
+        file.write(f"""\
             api10->godot_variant_new_bool({node.variable(op.dest).address_of()}, true);
         """)
 
     def opcode_assignfalse(op: AssignFalseGDScriptOp):
-        file.write(f"""
+        file.write(f"""\
             api10->godot_variant_new_bool({node.variable(op.dest).address_of()}, false);
         """)
 
     def opcode_operator(op: OperatorGDScriptOp):
-        file.write(f"""
-            api11->godot_variant_evaluate({op.op}, 
-                {node.variable(op.operand1).address_of()}, 
-                {node.variable(op.operand2).address_of()}, 
-                {node.variable(op.dest).address_of()}, 
-                &__flag);
-        """)
+        file.write(\
+            f"api11->godot_variant_evaluate({op.op}, " \
+                f"{node.variable(op.operand1).address_of()}, " \
+                f"{node.variable(op.operand2).address_of()}, " \
+                f"{node.variable(op.dest).address_of()}, " \
+                f"&__flag);\n")
 
     def opcode_return(op: ReturnGDScriptOp):
-        file.write(f"""
-            api10->godot_variant_new_copy(&__return_value, {node.variable(op.source).address_of()});
-            // next statement should be a goto __exit;            
+        file.write(f"""\
+            api10->godot_variant_new_copy(&__return_value, {node.variable(op.source).address_of()});        
         """)
 
     def opcode_destroy(op: DestroyGDScriptOp):
-        file.write(f"""
+        file.write(f"""\
             api10->godot_variant_destroy({node.variable(op.address).address_of()});
         """)
 
     def opcode_initialize(op: InitializeGDScriptOp):
-        file.write(f"""
+        file.write(f"""\
             api10->godot_variant_new_nil({node.variable(op.address).address_of()});
         """)
 
     def opcode_real_return(op: RealReturnGDScriptOp):
-        file.write(f"""
+        file.write(f"""\
             return __return_value;
         """)
 
@@ -159,13 +157,13 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         call_return = isinstance(op, (CallReturnGDScriptOp, CallSelfBaseGDScriptOp)) and op.dest is not None
 
         # use local scope for args[]
-        file.write(f""" 
+        file.write(f"""\
             {{
         """)           
 
         # args array if necessary, otherwise just use a null ptr
         if op.arg_count > 0:
-            file.write(f"""
+            file.write(f"""\
                 godot_variant *args[] = {{ {", ".join([
                     node.variable(addr).address_of() for addr in op.args
                 ])} }};
@@ -191,32 +189,27 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         # if method is in vtable we can call with function pointer,
         # otherwise we will have to call with godot_variant_call
         if call_return:
-            file.write(f"""
-                {node.variable(op.dest).value()} = """) # type: ignore
+            file.write(f"{node.variable(op.dest).value()} = ") # type: ignore
 
         if vtable_entry:                
             base_chain = "base->" if call_base else ""
-            file.write(f"""
-                    p_user_data->__vtable->{base_chain}methods[{vtable_entry.index}](
-                        p_instance,
-                        p_method_data,
-                        p_user_data,
-                        {op.arg_count},
-                        {args});
-            """)
+            file.write(\
+                f"p_user_data->__vtable->{base_chain}methods[{vtable_entry.index}](" \
+                    f"p_instance, " \
+                    f"p_method_data, " \
+                    f"p_user_data, " \
+                    f"{op.arg_count}, " \
+                    f"{args});\n")
         else:
-            file.write(f"""
-                api10->godot_variant_call(
-                    {receiver},
-                    {function_context.global_names_identifier}[{op.name_index}],
-                    {args},
-                    {op.arg_count},
-                    &__error);
-            """)
+            file.write(\
+                f"api10->godot_variant_call(" \
+                    f"{receiver}, " \
+                    f"{function_context.global_names_identifier}[{op.name_index}], " \
+                    f"{args}, " \
+                    f"{op.arg_count}, " \
+                    f"&__error);\n")
 
-        file.write(f"""
-            }}
-        """)
+        file.write(f"""}}\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     

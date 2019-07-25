@@ -73,28 +73,24 @@ int Class_3_method1_constants_initialized = 0;
 
         void Class_1_dtor(godot_object *p_instance, void *p_method_data, void *_p_user_data)
     ;
-
         godot_variant Class_1_func__init(
             godot_object* p_instance,
             void* p_method_data,
             void* _p_user_data,
             int p_num_args,
             godot_variant** p_args);
-
         godot_variant Class_1_func_called_method(
             godot_object* p_instance,
             void* p_method_data,
             void* _p_user_data,
             int p_num_args,
             godot_variant** p_args);
-
         godot_variant Class_1_func_diamond_dom(
             godot_object* p_instance,
             void* p_method_data,
             void* _p_user_data,
             int p_num_args,
             godot_variant** p_args);
-
         godot_variant Class_1_func_call_method(
             godot_object* p_instance,
             void* p_method_data,
@@ -107,21 +103,18 @@ int Class_3_method1_constants_initialized = 0;
 
         void Class_3_dtor(godot_object *p_instance, void *p_method_data, void *_p_user_data)
     ;
-
         godot_variant Class_3_func__init(
             godot_object* p_instance,
             void* p_method_data,
             void* _p_user_data,
             int p_num_args,
             godot_variant** p_args);
-
         godot_variant Class_3_func_method1(
             godot_object* p_instance,
             void* p_method_data,
             void* _p_user_data,
             int p_num_args,
             godot_variant** p_args);
-
         godot_variant Class_3_func_method2(
             godot_object* p_instance,
             void* p_method_data,

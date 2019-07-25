@@ -8,8 +8,6 @@ from gd2c.targets.gdnative import GDNativeCodeGen
 codegen = GDNativeCodeGen(project, "./example/out")
 codegen.transpile()
 
-
-
 def print_stuff():
     from gd2c.controlflow import build_control_flow_graph
     for cls in project.classes():

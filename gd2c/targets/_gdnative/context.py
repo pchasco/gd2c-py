@@ -128,7 +128,7 @@ class ClassContext:
         
         return None
 
-    def get_function_context(self, what: Union[str, GDScriptFunction]) -> Optional[FunctionContext]:
+    def get_function_context(self, what: Union[str, GDScriptFunction]) -> FunctionContext:
         if isinstance(what, str):
             return self.function_contexts[what]
 
@@ -138,3 +138,14 @@ class ClassContext:
                     return func_context
 
         raise Exception("function not found")
+
+    def get_member_context(self, what: Union[str, int]) -> MemberContext:
+        if isinstance(what, str):
+            return self.member_contexts[what]
+
+        if isinstance(what, int):
+            for member_context in self.member_contexts.values():
+                if member_context.member.index == what:
+                    return member_context
+
+        raise Exception("member not found")
