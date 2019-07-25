@@ -21,7 +21,8 @@ class GDNativeCodeGen:
             transform.insert_initializers_transformation,
             transform.insert_destructors_transformation,
             transform.replace_init_calls_with_noop_transformation,
-            transform.map_variables_transformation
+            transform.map_variables_transformation,
+            transform.update_mutated_parameter_flags
         ]
 
     @property
@@ -50,6 +51,10 @@ class GDNativeCodeGen:
         self.project.visit_classes_in_dependency_order(make_context)
 
     def _apply_transformations(self):
+        for class_context in self.class_contexts.values():
+            for func_context in class_context.function_contexts.values():
+                func_context.func.cfg = build_control_flow_graph(func_context.func)
+
         for transform in self.transforms:
             transform(self)
 

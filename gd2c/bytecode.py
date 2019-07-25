@@ -717,7 +717,7 @@ class DefineGDScriptOp(PseudoGDScriptOp):
     def __init__(self, address: int):
         super().__init__(OPCODE_DEFINE)
         self.address = address
-        self._writes = set([address])
+        # this does not write, so don't add address to the _writes set
 
     def __str__(self):
         return f"DEFINE {self.address}"

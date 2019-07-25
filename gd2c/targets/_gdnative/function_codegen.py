@@ -62,7 +62,9 @@ def transpile_function(function_context: FunctionContext, file: IO):
     """)
 
 def __transpile_nodes(function_context: FunctionContext, file: IO):
-    cfg = function_context.cfg
+    assert function_context.func
+    assert function_context.func.cfg
+    cfg = function_context.func.cfg
     worklist = [cfg.entry_node]
     visited: Set[ControlFlowGraphNode] = set()
     while any(worklist):
@@ -79,14 +81,18 @@ def __transpile_nodes(function_context: FunctionContext, file: IO):
 
 def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode, op: GDScriptOp, file: IO):
     def opcode_jump(op: JumpGDScriptOp):
-        branch = function_context.cfg.node_from_address(op.branch)
+        assert function_context.func
+        assert function_context.func.cfg
+        branch = function_context.func.cfg.node_from_address(op.branch)
         assert branch
         file.write(f"goto {branch.label};\n")
 
     def opcode_jumpif(op: JumpIfGDScriptOp):
-        branch = function_context.cfg.node_from_address(op.branch)
+        assert function_context.func
+        assert function_context.func.cfg
+        branch = function_context.func.cfg.node_from_address(op.branch)
         assert branch
-        fallthrough = function_context.cfg.node_from_address(op.fallthrough)
+        fallthrough = function_context.func.cfg.node_from_address(op.fallthrough)
         assert fallthrough
         file.write(f"""\
             __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});
@@ -95,9 +101,11 @@ def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode
         """)
 
     def opcode_jumpifnot(op: JumpIfNotGDScriptOp):
-        branch = function_context.cfg.node_from_address(op.branch)
+        assert function_context.func
+        assert function_context.func.cfg
+        branch = function_context.func.cfg.node_from_address(op.branch)
         assert branch
-        fallthrough = function_context.cfg.node_from_address(op.fallthrough)
+        fallthrough = function_context.func.cfg.node_from_address(op.fallthrough)
         assert fallthrough
         file.write(f"""\
             __flag = api10->godot_variant_as_bool({node.variable(op.condition).address_of()});

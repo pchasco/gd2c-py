@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Union, Optional, List, Dict, Set, Iterable, Tuple
+from typing import TYPE_CHECKING, Union, Optional, List, Dict, Set, Iterable, Tuple
 from gd2c.variant import VariantType
 from gd2c.bytecode import GDScriptOp
 import re
+
+if TYPE_CHECKING:
+    from controlflow import ControlFlowGraph
 
 class GDScriptGlobal:
     def __init__(self, index: int, name: str, original_name: str, vtype: int, kind_code: int, value: str, source: str):
@@ -39,9 +42,11 @@ class GDScriptFunctionParameter:
         self.name = name        
         self.vtype = VariantType.get(vtype)
         self.index = index
-        self.is_const = False
+        self.is_assigned = False
 
 class GDScriptFunction:
+    cfg: Optional[ControlFlowGraph]
+
     TYPE_METHOD = 0
     
     def __init__(self, name: str, function_type: int):
@@ -54,6 +59,8 @@ class GDScriptFunction:
         self._constants: Dict[int, GDScriptFunctionConstant] = {}
         self._ops: List[Tuple[int, GDScriptOp]] = []
         self.global_names: List[str] = []
+        self.cfg = None
+        self._mutates: Set = set([])
 
     @property
     def len_stack_array(self) -> int:

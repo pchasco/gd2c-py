@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Union, List, Set, FrozenSet, Optional, Dict, IO, TYPE_CHECKING
 from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
-from gd2c.controlflow import ControlFlowGraph, build_control_flow_graph
 
 class FunctionContext:
     func: GDScriptFunction
@@ -11,7 +10,6 @@ class FunctionContext:
     function_identifier: str
     paramters_identifier: str
     global_names_identifier: str
-    cfg: ControlFlowGraph
 
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
         self.func = func
@@ -21,8 +19,6 @@ class FunctionContext:
         self.function_identifier = f"{class_context.cls.name}_func_{self.func.name}"
         self.parameters_identifier = "p_args"
         self.global_names_identifier = f"{class_context.cls.name}_global_names"
-
-        self.cfg = build_control_flow_graph(func)
 
 class VtableEntry:
     func_context: FunctionContext

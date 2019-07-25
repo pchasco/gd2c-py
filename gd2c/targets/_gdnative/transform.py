@@ -5,6 +5,10 @@ from gd2c.targets._gdnative.variable import *
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import GDNativeCodeGen, FunctionContext
 
+def update_mutated_parameter_flags(codegen: GDNativeCodeGen):
+    from gd2c.analysis import mark_assigned_parameters
+    mark_assigned_parameters(codegen.project)
+
 def map_variables_transformation(codegen: GDNativeCodeGen):
     def transform_func(func_context: FunctionContext):
         variables: Dict[int, AbstractVariable] = {}
@@ -19,8 +23,9 @@ def map_variables_transformation(codegen: GDNativeCodeGen):
 
                     node.map_address_to_variable(addr, var)
 
-        func_context.cfg.live_variable_analysis()
-        func_context.cfg.visit_nodes(visit)
+        assert func_context.func.cfg
+        func_context.func.cfg.live_variable_analysis()
+        func_context.func.cfg.visit_nodes(visit)
 
     def transform_class(cls, depth):
         class_context = codegen.class_contexts[cls.type_id]
@@ -33,8 +38,9 @@ def insert_initializers_transformation(codegen: GDNativeCodeGen):
     from gd2c.bytecode import InitializeGDScriptOp
 
     def transform_func(func_context: FunctionContext):
-        assert func_context.cfg.entry_node
-        node = func_context.cfg.entry_node
+        assert func_context.func.cfg
+        assert func_context.func.cfg.entry_node
+        node = func_context.func.cfg.entry_node
         ops = [
             InitializeGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, i + func_context.func.len_parameters)) 
             for i in range(func_context.func.len_stack_array)
@@ -52,8 +58,9 @@ def insert_destructors_transformation(codegen: GDNativeCodeGen):
     from gd2c.bytecode import DestroyGDScriptOp
 
     def transform_func(func_context: FunctionContext):
-        assert func_context.cfg.exit_node
-        node = func_context.cfg.exit_node
+        assert func_context.func.cfg
+        assert func_context.func.cfg.exit_node
+        node = func_context.func.cfg.exit_node
         for i in range(func_context.func.len_stack_array):
             node.block.insert_ops_before(node.block.last_op, [DestroyGDScriptOp(GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, i + func_context.func.len_parameters))])
 
@@ -83,7 +90,9 @@ def replace_init_calls_with_noop_transformation(codegen: GDNativeCodeGen):
             for op in remove:
                 node.block.remove_op(op)
 
-        func_context.cfg.visit_nodes(visit)
+        assert func_context.func
+        assert func_context.func.cfg
+        func_context.func.cfg.visit_nodes(visit)
 
     def transform_class(cls, depth):
         class_context = codegen.class_contexts[cls.type_id]
