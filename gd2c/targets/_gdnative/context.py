@@ -2,6 +2,10 @@ from __future__ import annotations
 from typing import Union, List, Set, FrozenSet, Optional, Dict, IO, TYPE_CHECKING
 from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
 
+class Value:
+    def __init__(self, id: int):
+        self.id = id
+
 class FunctionContext:
     func: GDScriptFunction
     class_context: ClassContext
@@ -10,6 +14,7 @@ class FunctionContext:
     function_identifier: str
     paramters_identifier: str
     global_names_identifier: str
+    values: List[int]
 
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
         self.func = func
@@ -19,6 +24,12 @@ class FunctionContext:
         self.function_identifier = f"{class_context.cls.name}_func_{self.func.name}"
         self.parameters_identifier = "p_args"
         self.global_names_identifier = f"{class_context.cls.name}_global_names"
+        self.values = []
+
+    def new_value(self):
+        value = Value(len(self.values))
+        self.values.append(value)
+        return value
 
 class VtableEntry:
     func_context: FunctionContext

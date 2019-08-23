@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from project import Project
     from gdscriptclass import GDScriptFunction, GDScriptClass
 
+DONT_PROPAGATE = True
+
 def mark_assigned_parameters(project: Project) -> None:
     """Analyzes the project and marks function parameters as const in methods 
     where they are not modified, and not passed to functions that may modify
@@ -40,6 +42,9 @@ def mark_assigned_parameters(project: Project) -> None:
                     if addr in node.block.defs:
                         p.is_assigned = True
                         changed = True
+
+            if DONT_PROPAGATE:
+                return
 
             # Second check is to see if the parameter is passed to any function
             # that may assign the value
@@ -102,10 +107,11 @@ def mark_assigned_parameters(project: Project) -> None:
             for parameter in func.parameters():
                 parameter.is_assigned = False
 
-    # We must iterate until we reach a fixedpoint to propagate the
-    # is_assigned fact to callers after a callee is evaluated
-    while True:
-        changed = False
+    if DONT_PROPAGATE:
         project.visit_classes_in_dependency_order(visit_class)  
-        if not changed:
-            break
+    else:
+        while True:
+            changed = False
+            project.visit_classes_in_dependency_order(visit_class)  
+            if not changed:
+                break

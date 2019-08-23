@@ -35,6 +35,7 @@ def map_variables_transformation(codegen: GDNativeCodeGen):
     codegen.project.visit_classes_in_dependency_order(transform_class)     
 
 def insert_initializers_transformation(codegen: GDNativeCodeGen):
+    """Inserts Initialize ops for all implicit stack variables."""
     from gd2c.bytecode import InitializeGDScriptOp
 
     def transform_func(func_context: FunctionContext):
@@ -55,6 +56,9 @@ def insert_initializers_transformation(codegen: GDNativeCodeGen):
     codegen.project.visit_classes_in_dependency_order(transform_class)    
 
 def insert_destructors_transformation(codegen: GDNativeCodeGen):
+    """Inserts destructor calls for variants that were created in the
+    function.
+    """
     from gd2c.bytecode import DestroyGDScriptOp
 
     def transform_func(func_context: FunctionContext):
@@ -72,6 +76,9 @@ def insert_destructors_transformation(codegen: GDNativeCodeGen):
     codegen.project.visit_classes_in_dependency_order(transform_class)    
 
 def replace_init_calls_with_noop_transformation(codegen: GDNativeCodeGen):
+    """Eliminates calls to _init. The GDScript engine ignores these calls,
+    so we should do the same.
+    """
     from gd2c.bytecode import CallGDScriptOp, CallSelfBaseGDScriptOp, NoopGDScriptOp
 
     def transform_func(func_context: FunctionContext):

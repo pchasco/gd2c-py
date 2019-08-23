@@ -38,6 +38,11 @@ class GDScriptMember:
         self.vtype = VariantType.get(vtype)
 
 class GDScriptFunctionParameter:
+    name: str
+    vtype: Union[VariantType, int]
+    index: int
+    is_assigned: Union[bool, None]
+
     def __init__(self, name: str, vtype: Union[VariantType, int], index: int):
         self.name = name        
         self.vtype = VariantType.get(vtype)
@@ -106,25 +111,45 @@ class GDScriptFunction:
     def add_op(self, addr: int, op: GDScriptOp):
         self._ops.append((addr, op))
 
-    def pretty_print(self):
+    def pretty_print(self, print_bytecode=True):
         print(f"Function: {self.name}")
         print(f"  Return type: {self.return_vtype}")
         print(f"  Stack size: {self.stack_size}")
         print(f"  Parameters:")
-        for p in sorted(self.parameters(), key=lambda v: v.index):
-            print(f"    {str(p.index).ljust(3)}: {p.name}: {p.vtype}")
+        if any(self.parameters()):
+            for p in sorted(self.parameters(), key=lambda v: v.index):
+                is_assigned = 'Not determined' if p.is_assigned is None else p.is_assigned
+                print(f"    {str(p.index).ljust(3)}: {p.name}: {p.vtype}")
+                print(f"        is_assigned: {is_assigned}")
+        else:
+            print(f"    NONE")
+        
         print(f"  Default arguments jump table:")
-        for d in self.default_arguments_jump_table:
-            print(f"    {d}")
+        if any(self.default_arguments_jump_table):
+            for d in self.default_arguments_jump_table:
+                print(f"    {d}")
+        else:
+            print(f"    NONE")
+        
         print(f"  Constants:")
-        for const in sorted(self.constants(), key=lambda v: v.index):
-            print(f"    {str(const.index).ljust(3)}: {const.declaration}")
+        if any(self.constants()):
+            for const in sorted(self.constants(), key=lambda v: v.index):
+                print(f"    {str(const.index).ljust(3)}: {const.declaration}")
+        else:
+            print(f"    NONE")
+
         print(f"  Global names:")
-        for name in self.global_names:
-            print(f"    {str(name.index).ljust(3)}: {name}")
-        print(f"  Ops:")
-        for ip, op in self.ops():
-            print(f"{str(ip).rjust(8)}: {str(op)}")  
+        if any(self.global_names):
+            for name in self.global_names:
+                print(f"    {str(name).ljust(3)}: {name}")
+        else:
+            print(f"    NONE")
+
+        if print_bytecode:
+            print(f"  Ops:")
+            for ip, op in self.ops():
+                print(f"{str(ip).rjust(8)}: {str(op)}")  
+
         print(f"")      
 
 class GDScriptClass:
