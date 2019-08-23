@@ -2,9 +2,12 @@ from gd2c.project import Project
 from gd2c.domtree import build_domtree_naive
 
 project = Project("./example/source")
+#TODO: Not sure if it is useful to have load method on class itself. Should probably just have a
+#      project.load() function on the module that returns a project instance
 project.load_classes()
 
 from gd2c.targets.gdnative import GDNativeCodeGen
+#TODO same here. Should probably just have a factory function at module level
 codegen = GDNativeCodeGen(project, "./example/out")
 codegen.transpile()
 
