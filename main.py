@@ -1,5 +1,6 @@
 from gd2c.project import Project
 from gd2c.domtree import build_domtree_naive
+from gd2c.ssa import to_ssa_form
 
 def print_stuff(print_bytecode, print_cfg, print_domtree):
     from gd2c.controlflow import build_control_flow_graph
@@ -10,7 +11,7 @@ def print_stuff(print_bytecode, print_cfg, print_domtree):
         for func in cls.functions():
             cfg = build_control_flow_graph(func)
             cfg.live_variable_analysis()
-            tree = build_domtree_naive(cfg)
+            to_ssa_form(cfg, func)
 
             print(f"-----------------------------------")
             func.pretty_print(print_bytecode)
@@ -21,6 +22,7 @@ def print_stuff(print_bytecode, print_cfg, print_domtree):
 
             if print_domtree:
                 print("-- DOMTREE ---------------------------------")
+                tree = build_domtree_naive(cfg)
                 tree.pretty_print()
 
         print("\n")
@@ -33,7 +35,7 @@ project.load_classes()
 from gd2c.targets.gdnative import GDNativeCodeGen
 #TODO same here. Should probably just have a factory function at module level
 codegen = GDNativeCodeGen(project, "./example/out")
-codegen.transpile()
-print_stuff(False, False, False)
+#codegen.transpile()
+print_stuff(False, True, False)
 
 

@@ -3,7 +3,8 @@ from typing import Set, List, Iterable, Callable, Dict, Optional, ClassVar, TYPE
 from gd2c.variant import VariantType
 
 if TYPE_CHECKING:
-    from gd2c.gdscriptclass import GDScriptFunction
+    from gd2c.gdscriptclass import GDScriptFunction, GDScriptFunctionParameter
+    from gd2c.controlflow import Value
 
 OPCODE_OPERATOR = 0
 OPCODE_EXTENDSTEST = 1
@@ -54,6 +55,8 @@ OPCODE_UNBOX = 1003
 OPCODE_DEFINE = 1004
 OPCODE_INITIALIZE = 1005
 OPCODE_REAL_RETURN = 1006
+OPCODE_PARAMETER = 1007
+OPCODE_PHI = 1008
 
 # Comparison
 OPERATOR_EQUAL = 0
@@ -655,8 +658,8 @@ class JumpIfNotGDScriptOp(GDScriptOp):
         return 3
 
     @staticmethod
-    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpIfGDScriptOp':
-        return JumpIfGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
+    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpIfNotGDScriptOp':
+        return JumpIfNotGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
 
 class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
     def __init__(self, jump_table: Iterable[int]):
@@ -713,6 +716,13 @@ class PseudoGDScriptOp(GDScriptOp):
     def stride(self) -> int:
         raise Exception("Pseudo-ops have no stride as they do not have a bytecode representation")
 
+class ParameterGDScriptOp(PseudoGDScriptOp):
+    """Creates an SSA value from a parameter"""
+
+    def __init__(self, parameter: GDScriptFunctionParameter):
+        super().__init__(OPCODE_PARAMETER)
+        self.parameter = parameter
+
 class DefineGDScriptOp(PseudoGDScriptOp):
     def __init__(self, address: int):
         super().__init__(OPCODE_DEFINE)
@@ -746,6 +756,18 @@ class RealReturnGDScriptOp(PseudoGDScriptOp):
 
     def __str__(self):
         return f"RRETURN"
+
+class PhiGDScriptOp(PseudoGDScriptOp):
+    def __init__(self, address: int):
+        super().__init__(OPCODE_PHI)
+        self.address = address
+        self.dest: Optional[Value] = None
+        self.values: List[Value] = []
+
+    def __str__(self):
+        d = "None" if self.dest is None else self.dest
+        v = ",".join([str(v) for v in self.values])
+        return f"PHI {d} = {v}"
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,

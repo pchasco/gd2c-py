@@ -1,5 +1,5 @@
 import unittest
-from gd2c.controlflow import ControlFlowGraph, ControlFlowGraphNode, Edge, BasicBlock
+from gd2c.controlflow import ControlFlowGraph, ControlFlowGraphNode, Edge, Block
 from gd2c.gdscriptclass import GDScriptClass
 from gd2c.domtree import build_domtree_naive
 
@@ -25,7 +25,7 @@ def build_cfg_1():
                       8  
 
     """
-    nodes = [ControlFlowGraphNode(str(i), BasicBlock()) for i in range(9)]
+    nodes = [ControlFlowGraphNode(str(i), Block()) for i in range(9)]
     cfg = ControlFlowGraph()
     for n in nodes:
         cfg.add_node(n)

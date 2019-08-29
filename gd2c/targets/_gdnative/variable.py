@@ -1,10 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 from gd2c.address import *
-from gd2c.controlflow import AbstractVariable
 
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import FunctionContext
+
+class AbstractVariable:
+    pass
 
 class GDNativeLocalVariable(AbstractVariable):
     def __init__(self, func_context: FunctionContext, address: Union[int, GDScriptAddress]):

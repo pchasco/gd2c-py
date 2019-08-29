@@ -174,8 +174,8 @@ api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[0], &
             __flag = api10->godot_variant_as_bool(&stack[0]);
             if (__flag) goto _32;
             goto _20;
-        _20:
-api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[2], &stack[1], &__flag);
+        _32:
+api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[3], &stack[1], &__flag);
             api10->godot_variant_new_copy(p_args[0], &stack[1]);
         goto _44;
 _44:
@@ -187,8 +187,8 @@ __exit:
             api10->godot_variant_destroy(&stack[0]);
                     api10->godot_variant_destroy(&stack[1]);
                     return __return_value;
-        _32:
-api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[3], &stack[1], &__flag);
+        _20:
+api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_constants[2], &stack[1], &__flag);
             api10->godot_variant_new_copy(p_args[0], &stack[1]);
         goto _44;
         }

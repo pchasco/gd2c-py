@@ -39,7 +39,7 @@ class GDScriptMember:
 
 class GDScriptFunctionParameter:
     name: str
-    vtype: Union[VariantType, int]
+    vtype: VariantType
     index: int
     is_assigned: Union[bool, None]
 

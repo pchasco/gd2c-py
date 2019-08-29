@@ -175,4 +175,14 @@ OPS = [
     OP('AsgnFloat', TYPE_FLOAT, 2),
     OP('AsgnBool', TYPE_BOOL, 2),
     OP('AsgnVariant', TYPE_VARIANT, 2),
+
+    # Branch
+    OP('Branch', TYPE_VOID, 0),
+
+    # BranchIf
+    OP('BranchIf', TYPE_BOOL, 1),
+
+    # CallSelf
+    OP('CallSelf', TYPE_VARIANT, -1)
+
 ]

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, IO, Set, Union
 from gd2c.address import GDScriptAddress, ADDRESS_MODE_LOCALCONSTANT, ADDRESS_MODE_SELF
 from gd2c.variant import VariantType
 from gd2c.bytecode import *
-from gd2c.controlflow import ControlFlowGraphNode
+from gd2c.controlflow import Block
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import FunctionContext
 
@@ -66,9 +66,9 @@ def __transpile_nodes(function_context: FunctionContext, file: IO):
     assert function_context.func.cfg
     cfg = function_context.func.cfg
     worklist = [cfg.entry_node]
-    visited: Set[ControlFlowGraphNode] = set()
+    visited: Set[Block] = set()
     while any(worklist):
-        node = cast(ControlFlowGraphNode, worklist.pop())
+        node = cast(Block, worklist.pop())
         if node in visited:
             continue
 
@@ -76,10 +76,10 @@ def __transpile_nodes(function_context: FunctionContext, file: IO):
         worklist.extend(cfg.succs(node))
 
         file.write(f"{node.label}:\n")
-        for op in node.block.ops:
+        for op in node.ops:
             __transpile_op(function_context, node, op, file)
 
-def __transpile_op(function_context: FunctionContext, node: ControlFlowGraphNode, op: GDScriptOp, file: IO):
+def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptOp, file: IO):
     def opcode_jump(op: JumpGDScriptOp):
         assert function_context.func
         assert function_context.func.cfg

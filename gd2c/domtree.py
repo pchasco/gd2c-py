@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Set, List, Dict, Optional, Iterable, Tuple, cast, FrozenSet, Union
-from gd2c.controlflow import BasicBlock, ControlFlowGraph, ControlFlowGraphNode
+from gd2c.controlflow import Block, ControlFlowGraph
 
 class DomTreeNode:
-    def __init__(self, block: BasicBlock, dfs: int, label: Optional[str] = None):
+    def __init__(self, block: Block, dfs: int, label: Optional[str] = None):
         self._block = block
         self._children: Set['DomTreeNode'] = set()
         self._parent: Optional['DomTreeNode'] = self
@@ -22,14 +22,14 @@ class DomTreeNode:
         return self._children
 
     @property
-    def block(self) -> BasicBlock:
+    def block(self) -> Block:
         return self._block
 
 class DomTree:
     def __init__(self, cfg: ControlFlowGraph, root: DomTreeNode, nodes: Iterable[DomTreeNode]):
         self._root = root
-        self._nodes: Dict[BasicBlock, DomTreeNode] = dict(map(lambda n: (n._block, n), nodes))
-        self._frontiers: Dict[BasicBlock, FrozenSet[DomTreeNode]] = {}
+        self._nodes: Dict[Block, DomTreeNode] = dict(map(lambda n: (n._block, n), nodes))
+        self._frontiers: Dict[Block, FrozenSet[Block]] = {}
         self._cfg = cfg
 
         # TODO: Not sure about this in the constructor, but domtree not valid without it
@@ -38,29 +38,29 @@ class DomTree:
     def nodes(self) -> Iterable[DomTreeNode]:
         return self._nodes.values()
 
-    def node(self, what: Union[str, BasicBlock, DomTreeNode]) -> DomTreeNode:
+    def node(self, what: Union[str, Block]) -> DomTreeNode:
         if isinstance(what, str):
             c = self._cfg.node(what)
             assert c
-            return self._nodes[c.block]
-        elif isinstance(what, BasicBlock):
+            return self._nodes[c]
+        elif isinstance(what, Block):
             return self._nodes[what]
         elif isinstance(what, DomTreeNode):
             return self._nodes[what.block]
 
-        raise Exception("what must be str, BasicBlock, or DomTreeNode")        
+        raise Exception("what must be str, Block, or DomTreeNode")        
     
-    def frontier(self, what: Union[str, BasicBlock, DomTreeNode]) -> FrozenSet[DomTreeNode]:
+    def frontier(self, what: Union[str, Block, DomTreeNode]) -> FrozenSet[Block]:
         if isinstance(what, str):
             c = self._cfg.node(what)
             assert c
-            return self._frontiers[c.block]
-        elif isinstance(what, BasicBlock):
+            return self._frontiers[c]
+        elif isinstance(what, Block):
             return self._frontiers[what]
         elif isinstance(what, DomTreeNode):
             return self._frontiers[what.block]
 
-        raise Exception("what must be str, BasicBlock, or DomTreeNode")
+        raise Exception("what must be str, Block, or DomTreeNode")
 
     @property
     def root(self):
@@ -79,36 +79,36 @@ class DomTree:
         iterate(self._root, 0)
 
     def calc_dominance_frontiers(self):
-        frontiers: Dict[BasicBlock, Set[ControlFlowGraphNode]] = {}
+        frontiers: Dict[Block, Set[Block]] = {}
         for node in self._cfg.nodes():
-            frontiers[node.block] = set([])
+            frontiers[node] = set([])
 
         for b in self._cfg.nodes():
             preds = self._cfg.preds(b)
             if len(preds) > 1:
                 for p in preds:
                     runner = p
-                    bdom = self._nodes[b.block]
-                    while runner.block != bdom._parent._block:
-                        frontiers[runner.block].add(b)
-                        runner = self._cfg.node(self._nodes[runner._block]._parent._block)
+                    bdom = self._nodes[b]
+                    while runner != bdom._parent._block:
+                        frontiers[runner].add(b)
+                        runner = self._nodes[runner]._parent._block
 
         self._frontiers = dict(map(lambda k: (k, frozenset(frontiers[k])), frontiers))
 
 class Temp:
-    def __init__(self, node: ControlFlowGraphNode, dfs: int):
+    def __init__(self, node: Block, dfs: int):
         self.node = node
         self.dfs = dfs
         self.dom = -1
         self.flag = -1
 
-def _assign_dfs_numbers(cfg: ControlFlowGraph) -> Dict[ControlFlowGraphNode, Temp]:
-    nodes: Dict[ControlFlowGraphNode, Temp] = {}
-    visited: Set[ControlFlowGraphNode] = set()
+def _assign_dfs_numbers(cfg: ControlFlowGraph) -> Dict[Block, Temp]:
+    nodes: Dict[Block, Temp] = {}
+    visited: Set[Block] = set()
     stack = [cfg.entry_node]
     dfs = 0
     while any(stack):
-        cfg_node = cast(ControlFlowGraphNode, stack.pop())
+        cfg_node = cast(Block, stack.pop())
         if cfg_node in visited:
             continue
         
@@ -119,16 +119,16 @@ def _assign_dfs_numbers(cfg: ControlFlowGraph) -> Dict[ControlFlowGraphNode, Tem
 
     return nodes
 
-def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode, Temp], node: ControlFlowGraphNode):
+def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[Block, Temp], node: Block):
     assert cfg.entry_node
     
-    visited: Set[ControlFlowGraphNode] = set()
+    visited: Set[Block] = set()
     stack = [cfg.entry_node]
     dfs = reachable[node].dfs
 
     # Test which nodes are reachable without passing through node
     while any(stack):
-        n = cast(ControlFlowGraphNode, stack.pop())
+        n = cast(Block, stack.pop())
         if (n is node) or (n in visited):
             continue
         visited.add(n)
@@ -140,8 +140,8 @@ def _mark_dominators(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode
         if (n is not node) and t.flag != dfs and t.dom < 0:
             reachable[n].dom = dfs
 
-def _make_tree(cfg: ControlFlowGraph, reachable: Dict[ControlFlowGraphNode, Temp]) -> DomTree:
-    nodes = dict(map(lambda n: (n.node, DomTreeNode(n.node.block, n.dfs, n.node.label)), reachable.values()))
+def _make_tree(cfg: ControlFlowGraph, reachable: Dict[Block, Temp]) -> DomTree:
+    nodes = dict(map(lambda n: (n.node, DomTreeNode(n.node, n.dfs, n.node.label)), reachable.values()))
     dfs = dict(map(lambda nn: (nn.dfs_number, nn), nodes.values()))
 
     for nnn in reachable.values():
