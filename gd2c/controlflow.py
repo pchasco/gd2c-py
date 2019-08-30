@@ -187,10 +187,8 @@ class ControlFlowGraph:
         self._value_version = 0
 
     def new_value(self, address: int, vtype: VariantType) -> Value:
-        v = Value()
+        v = Value(address, self._value_version)
         v.vtype = vtype
-        v.name = address
-        v.version = self._value_version
         self._value_version += 1
         return v
 
