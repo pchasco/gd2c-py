@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Set, List, Iterable, Callable, Dict, Optional, ClassVar, TYPE_CHECKING, cast
 from gd2c.variant import VariantType
+from gd2c.address import GDScriptAddress, ADDRESS_MODE_STACKVARIABLE
 
 if TYPE_CHECKING:
     from gd2c.gdscriptclass import GDScriptFunction, GDScriptFunctionParameter
@@ -125,6 +126,12 @@ class GDScriptOp:
         self._reads: Set[int] = set()
         self._writes: Set[int] = set()
 
+    def set_rhs_ssa(self, addr: int, value: Value):
+        pass
+
+    def set_lhs_ssa(self, addr: int, value: Value):
+        pass
+
     @property
     def opcode(self):
         return self._opcode
@@ -188,8 +195,20 @@ class OperatorGDScriptOp(GDScriptOp):
         self.ssa_operand1 = None
         self.ssa_operand2 = None
 
+    def set_lhs_ssa(self, addr: int, value: Value):
+        self.ssa_dest = value
+
+    def set_rhs_ssa(self, addr: int, value: Value):
+        if self.operand1 == addr:
+            self.ssa_operand1 = value
+        if self.operand2 == addr:
+            self.ssa_operand2 = value
+
     def __str__(self):
-        return f"OPER {self.dest} = {self.operand1} {OperatorToken[self.op]} {self.operand2}"
+        if self.ssa_dest:
+            return f"OPER {self.ssa_dest} = {self.ssa_operand1} {OperatorToken[self.op]} {self.ssa_operand2}"
+        else:
+            return f"OPER {self.dest} = {self.operand1} {OperatorToken[self.op]} {self.operand2}"
 
     @property
     def stride(self) -> int:
@@ -223,7 +242,10 @@ class SetGDScriptOp(GDScriptOp):
         self.ssa_source = None
 
     def __str__(self):
-        return f"SET {self.array_address}[{self.index_address}] = {self.source_address}"
+        if self.ssa_array:
+            return f"SET {self.ssa_array}[{self.ssa_index}] = {self.ssa_source}"
+        else:
+            return f"SET {self.array_address}[{self.index_address}] = {self.source_address}"
 
     @property
     def stride(self) -> int:
@@ -396,8 +418,17 @@ class AssignGDScriptOp(GDScriptOp):
         self.ssa_dest = None
         self.ssa_source = None
 
+    def set_lhs_ssa(self, addr: int, value: Value):
+        self.ssa_dest = value
+
+    def set_rhs_ssa(self, addr: int, value: Value):
+        self.ssa_source = value
+
     def __str__(self):
-        return f"ASSIGN {self.dest} = {self.source}"
+        if self.ssa_dest:
+            return f"ASSIGN {self.ssa_dest} = {self.ssa_source}"
+        else:
+            return f"ASSIGN {self.dest} = {self.source}"
 
     @property
     def stride(self) -> int:
@@ -811,7 +842,7 @@ class JumpIfNotGDScriptOp(GDScriptOp):
         self.fallthrough = fallthrough
         self.condition = condition
         self._reads = set([condition])
-        self.ssa_condition = Optional[Value]
+        self.ssa_condition: Optional[Value] = None
 
     def __str__(self):
         return f"JUMPIFNT {self.condition} ? {self.branch}"
@@ -891,6 +922,7 @@ class ParameterGDScriptOp(PseudoGDScriptOp):
     def __init__(self, parameter: GDScriptFunctionParameter):
         super().__init__(OPCODE_PARAMETER)
         self.parameter = parameter
+        self._writes = set([GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, parameter.index)])
 
 class DefineGDScriptOp(PseudoGDScriptOp):
     address: int
@@ -900,7 +932,7 @@ class DefineGDScriptOp(PseudoGDScriptOp):
         super().__init__(OPCODE_DEFINE)
         self.address = address
         self.ssa_address = None
-        # this does not write, so don't add address to the _writes set
+        self.writes = set([address])
 
     def __str__(self):
         return f"DEFINE {self.address}"
@@ -940,18 +972,18 @@ class RealReturnGDScriptOp(PseudoGDScriptOp):
 
 class PhiGDScriptOp(PseudoGDScriptOp):
     address: int
-    dest: Optional[Value]
-    values: List[Value]
+    ssa_dest: Optional[Value]
+    ssa_values: Dict[str, Value]
 
     def __init__(self, address: int):
         super().__init__(OPCODE_PHI)
         self.address = address
-        self.dest = None
-        self.values = []
+        self.ssa_dest = None
+        self.ssa_values = {}
 
     def __str__(self):
-        d = f"[{self.address}]" if self.dest is None else self.dest
-        v = ",".join([str(v) for v in self.values])
+        d = f"{self.ssa_dest}" if self.ssa_dest is None else self.ssa_dest
+        v = ",".join([f"{k}: {v}" for k, v in self.ssa_values.items()])
         return f"PHI {d} = {v}"
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {

@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Set, List, Dict
 import itertools
-from gd2c.domtree import build_domtree_naive
-from gd2c.bytecode import ParameterGDScriptOp, PhiGDScriptOp
+from gd2c.domtree import build_domtree_naive, DomTree
+from gd2c.bytecode import ParameterGDScriptOp, PhiGDScriptOp, DefineGDScriptOp
+from gd2c.controlflow import Value, Block
+from gd2c.address import GDScriptAddress, ADDRESS_MODE_SELF, ADDRESS_MODE_NIL, ADDRESS_MODE_LOCALCONSTANT, ADDRESS_MODE_MEMBER, ADDRESS_MODE_CLASSCONSTANT, ADDRESS_MODE_GLOBAL, ADDRESS_MODE_NAMEDGLOBAL
 
 if TYPE_CHECKING:
     from gd2c.controlflow import ControlFlowGraph, Block
@@ -16,13 +18,38 @@ def to_ssa_form(cfg: ControlFlowGraph, func: GDScriptFunction):
 def _insert_phi_ops(cfg: ControlFlowGraph, func: GDScriptFunction):
     assert cfg.entry_node
 
+    # insert parameter ops for all parameters. Parameter ops create
+    # a definition to satisfy SSA
     parameter_ops = [ParameterGDScriptOp(p) for p in func.parameters()]
 
+    # Insert empty defs for all values referenced that are defined outside
+    # the function to satisfy SSA
+    modes = (
+        ADDRESS_MODE_NIL,
+        ADDRESS_MODE_SELF,
+        ADDRESS_MODE_MEMBER, 
+        ADDRESS_MODE_CLASSCONSTANT, 
+        ADDRESS_MODE_LOCALCONSTANT, 
+        ADDRESS_MODE_GLOBAL,
+        ADDRESS_MODE_NAMEDGLOBAL)
+    defines: Set[int] = set()
+    for block in cfg.nodes():
+        for op in block.ops:
+            defines = defines \
+                | set([a for a in op.reads if GDScriptAddress(a).mode in modes]) \
+                | set([a for a in op.writes if GDScriptAddress(a).mode in modes])
+
+    define_ops = [DefineGDScriptOp(a) for a in defines]
+
     if cfg.entry_node.first_op:
-        cfg.entry_node.insert_ops_before(cfg.entry_node.first_op, parameter_ops)
+        first_op = cfg.entry_node.first_op
+        cfg.entry_node.insert_ops_before(first_op, parameter_ops)
+        cfg.entry_node.insert_ops_before(first_op, define_ops)
     else:
         for p in parameter_ops:
             cfg.entry_node.append_op(p)
+        for dd in define_ops:
+            cfg.entry_node.append_op(dd)
 
     cfg.live_variable_analysis()
     dom = build_domtree_naive(cfg)
@@ -53,5 +80,67 @@ def _insert_phi_ops(cfg: ControlFlowGraph, func: GDScriptFunction):
                         was_on_worklist.add(d)
 
 def _rename_variables(cfg: ControlFlowGraph):
-    pass
-            
+    assert cfg.entry_node
+
+    visited: Set[Block] = set()
+    stacks: Dict[int, List[int]] = {}
+    values: Dict[int, List[Value]] = {}
+
+    dom = build_domtree_naive(cfg)
+
+    def new_value(address: int):
+        nonlocal visited
+        nonlocal stacks
+        nonlocal values
+
+        if address not in values:
+            value = Value(address, 0)
+            stacks[address] = [0]
+            values[address] = [value]
+            return value
+        else:
+            addrvalues = values[address]
+            value = Value(address, len(addrvalues))
+            stacks[address].append(value.version)
+            addrvalues.append(value)
+            return value
+
+    def _rename_func_variables(block: Block):
+        nonlocal visited
+        nonlocal stacks
+        nonlocal values
+        nonlocal dom
+        nonlocal cfg
+
+        if block in visited:
+            return
+
+        visited.add(block)
+
+        for op in block.ops:
+            if isinstance(op, PhiGDScriptOp):
+                value = new_value(op.address)
+                op.ssa_dest = value
+        
+        for op in block.ops:
+            for addr in op.reads:
+                op.set_rhs_ssa(addr, values[addr][stacks[addr][-1]])
+            for addr in op.writes:
+                value = new_value(addr)
+                op.set_lhs_ssa(addr, value)
+
+        for succ in cfg.succs(block):
+            for op in succ.ops:
+                if isinstance(op, PhiGDScriptOp):
+                    value = values[op.address][stacks[op.address][-1]]
+                    op.ssa_values[block.label] = value
+
+        for dn in dom.node(block).children():
+            _rename_func_variables(dn.block)
+
+        for op in block.ops:
+            for addr in op.writes:
+                stacks[addr].pop()
+
+
+    _rename_func_variables(cfg.entry_node)
