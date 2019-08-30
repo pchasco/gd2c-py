@@ -167,6 +167,14 @@ class NoopGDScriptOp(GDScriptOp):
         return NoopGDScriptOp()
 
 class OperatorGDScriptOp(GDScriptOp):
+    op: int
+    dest: int
+    operand1: int
+    operand2: int
+    ssa_dest: Optional[Value]
+    ssa_operand1: Optional[Value]
+    ssa_operand2: Optional[Value]
+
     def __init__(self, op: int, operand1: int, operand2: int, dest: int):
         super().__init__(OPCODE_OPERATOR)
         self.op = op
@@ -175,6 +183,10 @@ class OperatorGDScriptOp(GDScriptOp):
         self.operand2 = operand2
         self._writes = set([dest])
         self._reads = set([operand1, operand2])
+
+        self.ssa_dest = None
+        self.ssa_operand1 = None
+        self.ssa_operand2 = None
 
     def __str__(self):
         return f"OPER {self.dest} = {self.operand1} {OperatorToken[self.op]} {self.operand2}"
@@ -192,6 +204,13 @@ class OperatorGDScriptOp(GDScriptOp):
             bytecode[index + 4])
 
 class SetGDScriptOp(GDScriptOp):
+    array_address: int
+    index_address: int
+    source_address: int
+    ssa_array: Optional[Value]
+    ssa_index: Optional[Value]
+    ssa_source: Optional[Value]
+
     def __init__(self, array_address: int, index_address: int, source_address: int):
         super().__init__(OPCODE_SET)
         self.array_address = array_address
@@ -199,6 +218,9 @@ class SetGDScriptOp(GDScriptOp):
         self.source_address = source_address
         self._reads = set([source_address, array_address, index_address])
         self._writes = set([array_address])
+        self.ssa_array = None
+        self.ssa_index = None
+        self.ssa_source = None
 
     def __str__(self):
         return f"SET {self.array_address}[{self.index_address}] = {self.source_address}"
@@ -215,6 +237,13 @@ class SetGDScriptOp(GDScriptOp):
             bytecode[index + 3])
 
 class GetGDScriptOp(GDScriptOp):
+    dest: int
+    array_address: int
+    index_address: int
+    ssa_dest: Optional[Value]
+    ssa_array: Optional[Value]
+    ssa_index: Optional[Value]
+
     def __init__(self, dest: int, array_address: int, index_address: int):
         super().__init__(OPCODE_GET)
         self.dest = dest
@@ -222,6 +251,9 @@ class GetGDScriptOp(GDScriptOp):
         self.index_address = index_address
         self._writes = set([dest])
         self._reads = set([array_address, index_address])
+        self.ssa_dest = None
+        self.ssa_array = None
+        self.ssa_index = None
 
     def __str__(self):
         return f"GET {self.dest} = {self.array_address}[{self.index_address}]"
@@ -238,16 +270,24 @@ class GetGDScriptOp(GDScriptOp):
             bytecode[index + 2])
 
 class SetNamedGDScriptOp(GDScriptOp):
-    def __init__(self, receiver: int, name_index: int, source: int):
+    dest: int
+    name_index: int
+    source: int
+    ssa_dest: Optional[Value]
+    ssa_source: Optional[Value]
+
+    def __init__(self, dest: int, name_index: int, source: int):
         super().__init__(OPCODE_SETNAMED)
-        self.receiver = receiver
+        self.dest = dest
         self.name_index = name_index
         self.source = source
-        self._writes = set([receiver])
+        self._writes = set([dest])
         self._reads = set([source])
+        self.ssa_dest = None
+        self.ssa_source = None
 
     def __str__(self):
-        return f"SETNAMED {self.dest} = {self.array_address}.['{self.index_address}']"
+        return f"SETNAMED {self.dest}.global_names[{self.name_index}] = {self.source}"
 
     @property
     def stride(self) -> int:
@@ -261,16 +301,24 @@ class SetNamedGDScriptOp(GDScriptOp):
             bytecode[index + 3])
 
 class GetNamedGDScriptOp(GDScriptOp):
-    def __init__(self, dest: int, receiver: int, name_index: int):
+    dest: int
+    name_index: int
+    source: int
+    ssa_dest: Optional[Value]
+    ssa_source: Optional[Value]
+
+    def __init__(self, dest: int, source: int, name_index: int):
         super().__init__(OPCODE_GETNAMED)
-        self.receiver = receiver
-        self.name_index = name_index
         self.dest = dest
+        self.name_index = name_index
+        self.source = source
         self._writes = set([dest])
-        self._reads = set([receiver])
+        self._reads = set([source])
+        self.ssa_dest = None
+        self.ssa_source = None
 
     def __str__(self):
-        return f"GETNAMED {self.dest} = {self.array_address}['{self.index_address}'"
+        return f"GETNAMED {self.dest} = {self.array_address}.global_names[{self.index_address}]"
 
     @property
     def stride(self) -> int:
@@ -284,11 +332,16 @@ class GetNamedGDScriptOp(GDScriptOp):
             bytecode[index + 2])
 
 class SetMemberGDScriptOp(GDScriptOp):
+    name_index: int
+    source: int
+    ssa_source: Optional[Value]
+
     def __init__(self, name_index: int, source: int):
         super().__init__(OPCODE_SETMEMBER)
         self.name_index = name_index
         self.source = source
         self._reads = set([source])
+        self.ssa_source = None
 
     def __str__(self):
         return f"SETMEMBER {self.receiver}.{self.name_index} = {self.source}"
@@ -304,11 +357,16 @@ class SetMemberGDScriptOp(GDScriptOp):
             bytecode[index + 2])
 
 class GetMemberGDScriptOp(GDScriptOp):
+    dest: int
+    name_index: int
+    ssa_dest: Optional[Value]
+
     def __init__(self, dest: int, name_index: int):
         super().__init__(OPCODE_GETMEMBER)
         self.dest = dest
         self.name_index = name_index
         self._writes = set([dest])
+        self.ssa_dest = None
 
     def __str__(self):
         return f"GETMEMBER {self.dest} = self.{self.name_index}"
@@ -324,12 +382,19 @@ class GetMemberGDScriptOp(GDScriptOp):
             bytecode[index + 1])
 
 class AssignGDScriptOp(GDScriptOp):
+    dest: int
+    source: int
+    ssa_dest: Optional[Value]
+    ssa_source: Optional[Value]
+
     def __init__(self, dest: int, source: int):
         super().__init__(OPCODE_ASSIGN)
         self.dest = dest
         self.source = source
         self._writes = set([dest])
         self._reads = set([source])
+        self.ssa_dest = None
+        self.ssa_source = None
 
     def __str__(self):
         return f"ASSIGN {self.dest} = {self.source}"
@@ -345,10 +410,14 @@ class AssignGDScriptOp(GDScriptOp):
             bytecode[index + 2])
 
 class AssignTrueGDScriptOp(GDScriptOp):
+    dest: int
+    ssa_dest: Optional[Value]
+
     def __init__(self, dest: int):
         super().__init__(OPCODE_ASSIGNTRUE)
         self.dest = dest
         self._writes = set([dest])
+        self.ssa_dest = None
 
     def __str__(self):
         return f"ASGNTRUE {self.dest}"
@@ -362,6 +431,9 @@ class AssignTrueGDScriptOp(GDScriptOp):
         return AssignTrueGDScriptOp(bytecode[index + 1])
 
 class AssignFalseGDScriptOp(GDScriptOp):
+    dest: int
+    ssa_dest: Optional[Value]
+
     def __init__(self, dest: int):
         super().__init__(OPCODE_ASSIGNFALSE)
         self.dest = dest
@@ -379,6 +451,11 @@ class AssignFalseGDScriptOp(GDScriptOp):
         return AssignFalseGDScriptOp(bytecode[index + 1])
 
 class AssignTypedBuiltinGDScriptOp(GDScriptOp):
+    dest: int
+    source: int
+    ssa_dest: Optional[Value]
+    ssa_source: Optional[Value]
+
     def __init__(self, vtype: int, dest: int, source: int):
         super().__init__(OPCODE_ASSIGNTYPEDBUILTIN)
         self.vtype = VariantType.get(vtype)
@@ -386,6 +463,8 @@ class AssignTypedBuiltinGDScriptOp(GDScriptOp):
         self.source = source
         self._writes = set([dest])
         self._reads = set([source])
+        self.ssa_dest = None
+        self.ssa_source = None
 
     def __str__(self):
         return f"ASGNBI {self.dest}"
@@ -402,10 +481,14 @@ class AssignTypedBuiltinGDScriptOp(GDScriptOp):
             bytecode[index + 3])
 
 class ReturnGDScriptOp(GDScriptOp):
+    source: int
+    ssa_source: Optional[Value]
+
     def __init__(self, source: int):
         super().__init__(OPCODE_RETURN)
         self.source = source
         self._reads = set([source])
+        self.ssa_source = None
 
     def __str__(self):
         return f"RETURN {self.source}"
@@ -419,6 +502,13 @@ class ReturnGDScriptOp(GDScriptOp):
         return ReturnGDScriptOp(bytecode[index + 1])
 
 class ConstructGDScriptOp(GDScriptOp):
+    vtype: VariantType
+    arg_count: int
+    args: List[int]
+    dest: int
+    ssa_args: List[Value]
+    ssa_dest: Optional[Value]
+
     def __init__(self, vtype: int, arg_count: int, args: Iterable[int], dest: int):
         super().__init__(OPCODE_CONSTRUCT)
         self.vtype = VariantType.get(vtype)
@@ -427,6 +517,8 @@ class ConstructGDScriptOp(GDScriptOp):
         self.dest = dest
         self._writes = set([dest])
         self._reads = set(self.args)
+        self.ssa_dest = None
+        self.ssa_args = []
 
     def __str__(self):
         return f"CONSTRU {self.dest} = ..."
@@ -445,6 +537,12 @@ class ConstructGDScriptOp(GDScriptOp):
             bytecode[index + 3 + count])
 
 class ConstructArrayGDScriptOp(GDScriptOp):
+    item_count: int
+    item_addresses: List[int]
+    dest: int
+    ssa_dest: Optional[Value]
+    ssa_items: List[Value]
+
     def __init__(self, dest: int, item_count: int, item_addresses: Iterable[int]):
         super().__init__(OPCODE_CONSTRUCTARRAY)
         self.item_count = item_count
@@ -452,6 +550,8 @@ class ConstructArrayGDScriptOp(GDScriptOp):
         self.dest = dest
         self._writes = set([dest])
         self._reads = set(self.item_addresses)
+        self.ssa_dest = None
+        self.ssa_items = []
 
     def __str__(self):
         return f"NEWARRAY {self.dest} = ..."
@@ -469,6 +569,14 @@ class ConstructArrayGDScriptOp(GDScriptOp):
             bytecode[index + 2 : index + 2 + count])
 
 class ConstructDictionaryGDScriptOp(GDScriptOp):
+    item_count: int
+    key_addresses: List[int]
+    value_addresses: List[int]
+    dest: int
+    ssa_keys: List[Value]
+    ssa_values: List[Value]
+    ssa_dest: Optional[Value]
+
     def __init__(self, dest: int, item_count: int, key_addresses: Iterable[int], value_addresses: Iterable[int]):
         super().__init__(OPCODE_CONSTRUCTDICTIONARY)
         self.item_count = item_count
@@ -477,6 +585,9 @@ class ConstructDictionaryGDScriptOp(GDScriptOp):
         self.dest = dest
         self._writes = set([dest])
         self._reads = set(self.key_addresses) | set(self.value_addresses)
+        self.ssa_keys = []
+        self.ssa_values = []
+        self.ssa_dest = None
 
     def __str__(self):
         return f"NEWARRAY {self.dest} = ..."
@@ -502,6 +613,15 @@ class ConstructDictionaryGDScriptOp(GDScriptOp):
             values)
 
 class CallReturnGDScriptOp(GDScriptOp):
+    dest: int
+    arg_count: int
+    name_index: int
+    args: List[int]
+    receiver: int
+    ssa_dest: Optional[Value]
+    ssa_args: List[Value]
+    ssa_receiver: Optional[Value]
+
     def __init__(self, dest: int, receiver: int, arg_count: int, name_index: int, args: Iterable[int]):
         super().__init__(OPCODE_CALLRETURN)
         self.dest = dest
@@ -511,6 +631,9 @@ class CallReturnGDScriptOp(GDScriptOp):
         self.receiver = receiver
         self._writes = set([dest])
         self._reads = set([receiver]) | set(self.args)
+        self.ssa_dest = None
+        self.ssa_args = []
+        self.ssa_receiver = None
 
     def __str__(self):
         return f"CALLRET {self.receiver}.{self.name_index}(...)"
@@ -530,6 +653,13 @@ class CallReturnGDScriptOp(GDScriptOp):
             bytecode[index + 4 : index + 4 + count])
 
 class CallGDScriptOp(GDScriptOp):
+    arg_count: int
+    name_index: int
+    args: List[int]
+    receiver: int
+    ssa_args: List[Value]
+    ssa_receiver: Optional[Value]
+
     def __init__(self, receiver: int, arg_count: int, name_index: int, args: Iterable[int]):
         super().__init__(OPCODE_CALL)
         self.arg_count = arg_count
@@ -537,6 +667,8 @@ class CallGDScriptOp(GDScriptOp):
         self.args = list(args)[:]
         self.receiver = receiver
         self._reads = set([receiver]) | set(self.args)
+        self.ssa_args = []
+        self.ssa_receiver = None
 
     def __str__(self):
         return f"CALL {self.receiver}.{self.name_index}(...)"
@@ -556,6 +688,13 @@ class CallGDScriptOp(GDScriptOp):
             bytecode[index + 4 : index + 4 + count])
 
 class CallSelfBaseGDScriptOp(GDScriptOp):
+    dest: int
+    arg_count: int
+    name_index: int
+    args: List[int]
+    ssa_dest: Optional[Value]
+    ssa_args: List[Value]
+
     def __init__(self, dest: int, arg_count: int, name_index: int, args: Iterable[int]):
         super().__init__(OPCODE_CALLSELFBASE)
         self.dest = dest
@@ -581,6 +720,13 @@ class CallSelfBaseGDScriptOp(GDScriptOp):
             bytecode[index + 3 : index + 3 + count])
 
 class CallBuiltinGDScriptOp(GDScriptOp):
+    dest: int
+    arg_count: int
+    function_index: int
+    args: List[int]
+    ssa_dest: Optional[Value]
+    ssa_args: List[Value]
+
     def __init__(self, dest: int, function_index: int, arg_count: int, args: Iterable[int]):
         super().__init__(OPCODE_CALLBUILTIN)
         self.dest = dest
@@ -589,6 +735,8 @@ class CallBuiltinGDScriptOp(GDScriptOp):
         self.args = list(args)[:]
         self._dest = set([dest])
         self._reads = set(self.args)
+        self.ssa_dest = None
+        self.ssa_args = []
 
     def __str__(self):
         return f"CALLBI {self.dest} = builtin[{self.function_index}](...)"
@@ -607,6 +755,9 @@ class CallBuiltinGDScriptOp(GDScriptOp):
             bytecode[index + 3 : index + 3 + count])
 
 class JumpGDScriptOp(GDScriptOp):
+    branch: int
+    fallthrough: int
+
     def __init__(self, branch: int):
         super().__init__(OPCODE_JUMP)
         self.branch = branch
@@ -624,12 +775,18 @@ class JumpGDScriptOp(GDScriptOp):
         return JumpGDScriptOp(bytecode[index + 1])
 
 class JumpIfGDScriptOp(GDScriptOp):
+    branch: int
+    condition: int
+    fallthrough: int
+    ssa_condition: Optional[Value]
+
     def __init__(self, branch: int, condition: int, fallthrough: int):
         super().__init__(OPCODE_JUMPIF)
         self.branch = branch
         self.condition = condition
         self.fallthrough = fallthrough
         self._reads = set([condition])
+        self.ssa_condition = Optional[Value]
 
     def __str__(self):
         return f"JUMPIF {self.condition} ? {self.branch} : {self.fallthrough}"
@@ -643,12 +800,18 @@ class JumpIfGDScriptOp(GDScriptOp):
         return JumpIfGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
 
 class JumpIfNotGDScriptOp(GDScriptOp):
+    branch: int
+    condition: int
+    fallthrough: int
+    ssa_condition: Optional[Value]
+
     def __init__(self, branch: int, condition: int, fallthrough: int):
         super().__init__(OPCODE_JUMPIFNOT)
         self.branch = branch
         self.fallthrough = fallthrough
         self.condition = condition
         self._reads = set([condition])
+        self.ssa_condition = Optional[Value]
 
     def __str__(self):
         return f"JUMPIFNT {self.condition} ? {self.branch}"
@@ -662,6 +825,8 @@ class JumpIfNotGDScriptOp(GDScriptOp):
         return JumpIfNotGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
 
 class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
+    jump_table: List[int]
+
     def __init__(self, jump_table: Iterable[int]):
         super().__init__(OPCODE_JUMPTODEFAULTARGUMENT)
         self.jump_table = list(jump_table)[:]
@@ -678,6 +843,8 @@ class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
         return JumpToDefaultArgumentGDScriptOp(func.default_arguments_jump_table)
 
 class LineGDScriptOp(GDScriptOp):
+    line_number: int
+
     def __init__(self, line_number: int):
         super().__init__(OPCODE_LINE)
         self.line_number = line_number
@@ -719,33 +886,47 @@ class PseudoGDScriptOp(GDScriptOp):
 class ParameterGDScriptOp(PseudoGDScriptOp):
     """Creates an SSA value from a parameter"""
 
+    parameter: GDScriptFunctionParameter
+
     def __init__(self, parameter: GDScriptFunctionParameter):
         super().__init__(OPCODE_PARAMETER)
         self.parameter = parameter
 
 class DefineGDScriptOp(PseudoGDScriptOp):
+    address: int
+    ssa_adress: Optional[Value]
+
     def __init__(self, address: int):
         super().__init__(OPCODE_DEFINE)
         self.address = address
+        self.ssa_address = None
         # this does not write, so don't add address to the _writes set
 
     def __str__(self):
         return f"DEFINE {self.address}"
 
 class DestroyGDScriptOp(PseudoGDScriptOp):
+    address: int
+    ssa_address: Optional[Value]
+
     def __init__(self, address: int):
         super().__init__(OPCODE_DESTROY)
         self.address = address
         self._writes = set([address])
+        self.ssa_address = None
 
     def __str__(self):
         return f"DESTROY {self.address}"
 
 class InitializeGDScriptOp(PseudoGDScriptOp):
+    address: int
+    ssa_address: Optional[Value]
+
     def __init__(self, address: int):
         super().__init__(OPCODE_INITIALIZE)
         self.address = address
         self._writes = set([address])
+        self.ssa_address = None
 
     def __str__(self):
         return f"INIT {self.address}"
@@ -758,14 +939,18 @@ class RealReturnGDScriptOp(PseudoGDScriptOp):
         return f"RRETURN"
 
 class PhiGDScriptOp(PseudoGDScriptOp):
+    address: int
+    dest: Optional[Value]
+    values: List[Value]
+
     def __init__(self, address: int):
         super().__init__(OPCODE_PHI)
         self.address = address
-        self.dest: Optional[Value] = None
-        self.values: List[Value] = []
+        self.dest = None
+        self.values = []
 
     def __str__(self):
-        d = "None" if self.dest is None else self.dest
+        d = f"[{self.address}]" if self.dest is None else self.dest
         v = ",".join([str(v) for v in self.values])
         return f"PHI {d} = {v}"
 
@@ -817,7 +1002,9 @@ _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDS
     OPCODE_DESTROY: None,
     OPCODE_UNBOX: None,
     OPCODE_INITIALIZE: None,
-    OPCODE_REAL_RETURN: None
+    OPCODE_REAL_RETURN: None,
+    OPCODE_PARAMETER: None,
+    OPCODE_PHI: None
 }
 
 def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> GDScriptOp:
