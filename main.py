@@ -9,16 +9,13 @@ def print_stuff(print_bytecode, print_cfg, print_domtree):
         print(f"Class: {cls.name}")
         print(f"---------------------------------------------")
         for func in cls.functions():
-            cfg = build_control_flow_graph(func)
-            cfg.live_variable_analysis()
-            to_ssa_form(cfg, func)
+            func.cfg = build_control_flow_graph(func)
+            to_ssa_form(func)
 
-            print(f"-----------------------------------")
             func.pretty_print(print_bytecode)
 
             if print_cfg:
-                print(f"-----------------------------------")
-                cfg.pretty_print()
+                func.cfg.pretty_print(False, False)
 
             if print_domtree:
                 print("-- DOMTREE ---------------------------------")

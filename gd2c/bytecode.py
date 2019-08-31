@@ -926,7 +926,7 @@ class ParameterGDScriptOp(PseudoGDScriptOp):
 
 class DefineGDScriptOp(PseudoGDScriptOp):
     address: int
-    ssa_adress: Optional[Value]
+    ssa_address: Optional[Value]
 
     def __init__(self, address: int):
         super().__init__(OPCODE_DEFINE)
@@ -934,8 +934,14 @@ class DefineGDScriptOp(PseudoGDScriptOp):
         self.ssa_address = None
         self.writes = set([address])
 
+    def set_lhs_ssa(self, addr: int, value: Value):
+        self.ssa_address = value
+
     def __str__(self):
-        return f"DEFINE {self.address}"
+        if self.ssa_address:
+            return f"DEFINE {self.ssa_address} <- {self.address}"
+        else:
+            return f"DEFINE {self.address}"
 
 class DestroyGDScriptOp(PseudoGDScriptOp):
     address: int
@@ -983,7 +989,7 @@ class PhiGDScriptOp(PseudoGDScriptOp):
 
     def __str__(self):
         d = f"{self.ssa_dest}" if self.ssa_dest is None else self.ssa_dest
-        v = ",".join([f"{k}: {v}" for k, v in self.ssa_values.items()])
+        v = ", ".join([f"({k}: {v})" for k, v in self.ssa_values.items()])
         return f"PHI {d} = {v}"
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {

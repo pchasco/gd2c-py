@@ -29,3 +29,7 @@ func called_method(a, b):
 	b = 1
 	return a * b
 
+func natural_loop():
+	var a = 0
+	while a < 10:
+		a += 1

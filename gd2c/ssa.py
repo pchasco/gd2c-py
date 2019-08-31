@@ -4,19 +4,26 @@ import itertools
 from gd2c.domtree import build_domtree_naive, DomTree
 from gd2c.bytecode import ParameterGDScriptOp, PhiGDScriptOp, DefineGDScriptOp
 from gd2c.controlflow import Value, Block
-from gd2c.address import GDScriptAddress, ADDRESS_MODE_SELF, ADDRESS_MODE_NIL, ADDRESS_MODE_LOCALCONSTANT, ADDRESS_MODE_MEMBER, ADDRESS_MODE_CLASSCONSTANT, ADDRESS_MODE_GLOBAL, ADDRESS_MODE_NAMEDGLOBAL
+from gd2c.address import *
 
 if TYPE_CHECKING:
     from gd2c.controlflow import ControlFlowGraph, Block
     from gd2c.gdscriptclass import GDScriptFunction
     from gd2c.domtree import DomTree
 
-def to_ssa_form(cfg: ControlFlowGraph, func: GDScriptFunction):
-    _insert_phi_ops(cfg, func)
-    _rename_variables(cfg)
+def to_ssa_form(func: GDScriptFunction):
+    assert func
+    assert func.cfg
 
-def _insert_phi_ops(cfg: ControlFlowGraph, func: GDScriptFunction):
-    assert cfg.entry_node
+    func.cfg.live_variable_analysis()
+
+    _insert_phi_ops(func)
+    #_rename_variables(func)
+
+def _insert_phi_ops(func: GDScriptFunction):
+    assert func.cfg
+    assert func.cfg.entry_node
+    cfg = func.cfg
 
     # insert parameter ops for all parameters. Parameter ops create
     # a definition to satisfy SSA
@@ -24,22 +31,8 @@ def _insert_phi_ops(cfg: ControlFlowGraph, func: GDScriptFunction):
 
     # Insert empty defs for all values referenced that are defined outside
     # the function to satisfy SSA
-    modes = (
-        ADDRESS_MODE_NIL,
-        ADDRESS_MODE_SELF,
-        ADDRESS_MODE_MEMBER, 
-        ADDRESS_MODE_CLASSCONSTANT, 
-        ADDRESS_MODE_LOCALCONSTANT, 
-        ADDRESS_MODE_GLOBAL,
-        ADDRESS_MODE_NAMEDGLOBAL)
-    defines: Set[int] = set()
-    for block in cfg.nodes():
-        for op in block.ops:
-            defines = defines \
-                | set([a for a in op.reads if GDScriptAddress(a).mode in modes]) \
-                | set([a for a in op.writes if GDScriptAddress(a).mode in modes])
-
-    define_ops = [DefineGDScriptOp(a) for a in defines]
+    parameter_addresses = set([GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, p.index) for p in func.parameters()])
+    define_ops = [DefineGDScriptOp(a) for a in cfg.entry_node.ins - parameter_addresses]
 
     if cfg.entry_node.first_op:
         first_op = cfg.entry_node.first_op
@@ -79,7 +72,10 @@ def _insert_phi_ops(cfg: ControlFlowGraph, func: GDScriptFunction):
                         worklist.add(d)
                         was_on_worklist.add(d)
 
-def _rename_variables(cfg: ControlFlowGraph):
+def _rename_variables(func: GDScriptFunction):
+    assert func
+    assert func.cfg
+    cfg = func.cfg
     assert cfg.entry_node
 
     visited: Set[Block] = set()

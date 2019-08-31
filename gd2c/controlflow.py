@@ -319,11 +319,12 @@ class ControlFlowGraph:
             node.ins = du.ins
             node.outs = du.outs
 
-    def pretty_print(self):
+    def pretty_print(self, print_def_use: bool = True, print_in_out: bool = True):
         worklist = [self._entry_node]
-        visited = set()
+        visited: Set[Block] = set()
         while any(worklist):
             node = worklist.pop()
+            assert node
             if node in visited:
                 continue
 
@@ -340,17 +341,31 @@ class ControlFlowGraph:
             else:
                 worklist.extend(self.succs(node))
 
-            print(f"  Block: {node.label}")
-            print(f"   Type: {['Normal', 'If', 'Return', 'Exit'][node.block_type]}")
-            print(f"  Edges: {', '.join([n.dest.label for n in node.edges])}")
-            print(f"  Preds: {', '.join(map(lambda n: n.label, self.preds(node)))}")
-            print(f"   Defs: {', '.join(map(lambda a: str(a), node.defs))}")
-            print(f"   Uses: {', '.join(map(lambda a: str(a), node.uses))}")
-            print(f"    Ins: {', '.join(map(lambda a: str(a), node.ins))}")
-            print(f"   Outs: {', '.join(map(lambda a: str(a), node.outs))}")
-            print(f"  Ops:")
-            for op in node.ops:
-                print(f"    {str(op)}")
+            succs = [n.dest.label for n in node.edges]
+
+            print(f"+------------------------------------------------")
+            print(f"| Block: {node.label} : Type: {['Normal', 'If', 'Return', 'Exit'][node.block_type]}")
+            print(f"| Preds: {', '.join(map(lambda n: n.label, self.preds(node)))} : Succs: {', '.join(succs)}")
+            print(f"|------------------------------------------------")
+            if print_def_use:
+                print(f"| Defs: {', '.join(map(lambda a: str(a), node.defs))}")
+                print(f"| Uses: {', '.join(map(lambda a: str(a), node.uses))}")
+            if print_in_out:
+                print(f"| Ins: {', '.join(map(lambda a: str(a), node.ins))}")
+                print(f"| Outs: {', '.join(map(lambda a: str(a), node.outs))}")
+            if print_def_use or print_in_out:
+                print(f"|------------------------------------------------")
+
+            if any(node.ops):
+                for op in node.ops:
+                    print(f"|    {str(op)}")
+            else:
+                print(f"|    EMPTY BLOCK")
+
+            if node.block_type == BLOCK_TYPE_BRANCH:
+                print(f"|    IF {node.control_address} GOTO {succs[0]} ELSE {succs[1]}")
+            elif node.block_type == BLOCK_TYPE_NORMAL:
+                print(f"|    GOTO {succs[0]}")
 
             print("")
         

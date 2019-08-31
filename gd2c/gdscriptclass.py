@@ -50,22 +50,32 @@ class GDScriptFunctionParameter:
         self.is_assigned = False
 
 class GDScriptFunction:
+    name: str
+    function_type: int
+    default_arguments_jump_table: List[int]
+    stack_size: int
+    return_vtype: VariantType
+    global_names: List[str]
     cfg: Optional[ControlFlowGraph]
+    _parameters: Dict[int, GDScriptFunctionParameter]
+    _constants: Dict[int, GDScriptFunctionConstant]
+    _ops: List[Tuple[int, GDScriptOp]]
+    _mutates: Set
 
     TYPE_METHOD = 0
     
     def __init__(self, name: str, function_type: int):
         self.name = name
         self.function_type = function_type
-        self.default_arguments_jump_table: List[int] = []
+        self.default_arguments_jump_table = []
         self.stack_size = 0
         self.return_vtype = VariantType.NIL
-        self._parameters: Dict[int, GDScriptFunctionParameter] = {}
-        self._constants: Dict[int, GDScriptFunctionConstant] = {}
-        self._ops: List[Tuple[int, GDScriptOp]] = []
-        self.global_names: List[str] = []
+        self.global_names = []
         self.cfg = None
-        self._mutates: Set = set([])
+        self._parameters = {}
+        self._constants = {}
+        self._ops = []
+        self._mutates= set([])
 
     @property
     def len_stack_array(self) -> int:
@@ -153,21 +163,34 @@ class GDScriptFunction:
         print(f"")      
 
 class GDScriptClass:
-    def __init__(self, resource_path: str, name: str, type_id: int):
-        self._built_in_type: Optional[str] = None
+    _built_in_type: Optional[str]
+    _resource_path: str
+    _base_resource_path: Optional[str]
+    _base: Optional[GDScriptClass]
+    _type_id: int
+    _name: str
+    _constants: Dict[str, GDScriptClassConstant]
+    _members: Dict[str, GDScriptMember]
+    _signals: Set[str]
+    _functions: Dict[str, GDScriptFunction]
+    _globals: Dict[int, GDScriptGlobal]
+    _ctor: Optional[GDScriptFunction] 
+    _dtor: Optional[GDScriptFunction] 
 
+    def __init__(self, resource_path: str, name: str, type_id: int):
+        self._built_in_type = None
         self._resource_path = re.sub(r'\.gd\.json', '', resource_path, flags=re.IGNORECASE)
-        self._base_resource_path: Optional[str] = None
-        self._base: Optional[GDScriptClass] = None
+        self._base_resource_path = None
+        self._base = None
         self._type_id = type_id
         self._name = name
-        self._constants: Dict[str, GDScriptClassConstant] = {}
-        self._members: Dict[str, GDScriptMember] = {}
-        self._signals: Set[str] = set()
-        self._functions: Dict[str, GDScriptFunction] = {}
-        self._globals: Dict[int, GDScriptGlobal] = {}
-        self._ctor: Optional[GDScriptFunction] = None
-        self._dtor: Optional[GDScriptFunction] = None
+        self._constants = {}
+        self._members = {}
+        self._signals = set()
+        self._functions = {}
+        self._globals = {}
+        self._ctor = None
+        self._dtor = None
 
     @property
     def resource_path(self) -> str:
