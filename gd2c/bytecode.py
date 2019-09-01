@@ -817,10 +817,17 @@ class JumpIfGDScriptOp(GDScriptOp):
         self.condition = condition
         self.fallthrough = fallthrough
         self._reads = set([condition])
-        self.ssa_condition = Optional[Value]
+        self.ssa_condition = None
+
+    def set_rhs_ssa(self, addr: int, value: Value):
+        if self.condition == addr:
+            self.ssa_condition = value
 
     def __str__(self):
-        return f"JUMPIF {self.condition} ? {self.branch} : {self.fallthrough}"
+        if self.ssa_condition:
+            return f"JUMPIF {self.ssa_condition} ? {self.branch} : {self.fallthrough}"
+        else:
+            return f"JUMPIF {self.condition} ? {self.branch} : {self.fallthrough}"
 
     @property
     def stride(self) -> int:
@@ -896,7 +903,7 @@ class EndGDScriptOp(GDScriptOp):
         super().__init__(OPCODE_END)
 
     def __str__(self):
-        return f"END"
+        return f"END (jump to exit block)"
 
     @property
     def stride(self) -> int:

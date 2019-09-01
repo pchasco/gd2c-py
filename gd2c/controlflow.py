@@ -362,11 +362,6 @@ class ControlFlowGraph:
             else:
                 print(f"|    EMPTY BLOCK")
 
-            if node.block_type == BLOCK_TYPE_BRANCH:
-                print(f"|    IF {node.control_address} GOTO {succs[0]} ELSE {succs[1]}")
-            elif node.block_type == BLOCK_TYPE_NORMAL:
-                print(f"|    GOTO {succs[0]}")
-
             print("")
         
         print("")
@@ -407,6 +402,8 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
                 # We need to manually "close" the block by inserting an edge.
                 block.block_type = BLOCK_TYPE_NORMAL
                 block_edges[block] = [ip]
+                jumpop = JumpGDScriptOp(ip)
+                block.append_op(op)
 
             block_labels[ip] = f'_{str(ip)}'
             block = Block(block_labels[ip])
@@ -417,11 +414,13 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
             new_block_flag = True
             block.block_type = BLOCK_TYPE_NORMAL
             block_edges[block] = [EXIT_NODE_ADDRESS]
+            block.append_op(op)
         elif isinstance(op, JumpIfGDScriptOp):
             new_block_flag = True
             block.block_type = BLOCK_TYPE_BRANCH
             block.control_address = op.condition
             block_edges[block] = [op.branch, op.fallthrough]
+            block.append_op(op)
         elif isinstance(op, JumpIfNotGDScriptOp):
             new_block_flag = True
             block.block_type = BLOCK_TYPE_BRANCH
@@ -429,12 +428,15 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
             # For if not we swap the fallthrough and branch to keep things simple by keeping only one type
             # of branch block 
             block_edges[block] = [op.fallthrough, op.branch]
+            ifop = JumpIfGDScriptOp(op.fallthrough, op.condition, op.branch)
+            block.append_op(ifop)
         elif isinstance(op, JumpGDScriptOp):
             new_block_flag = True
             # Even though this block ends with a jump, we consider it a normal block because
             # the jump is unconditional and doesn't require a control value
             block.block_type = BLOCK_TYPE_NORMAL
             block_edges[block] = [op.branch, op.fallthrough]
+            block.append_op(op)
         else:
             block.append_op(op)
             is_block_closed = False

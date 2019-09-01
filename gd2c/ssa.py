@@ -18,7 +18,7 @@ def to_ssa_form(func: GDScriptFunction):
     func.cfg.live_variable_analysis()
 
     _insert_phi_ops(func)
-    #_rename_variables(func)
+    _rename_variables(func)
 
 def _insert_phi_ops(func: GDScriptFunction):
     assert func.cfg
