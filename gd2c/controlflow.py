@@ -152,6 +152,8 @@ class Block:
         defs = set()
         uses = set()
 
+        # defs are any variables that are written to within block
+        # uses are any variables that are read prior to being written to within the block
         for op in self._ops:
             uses.update(op.reads - defs)
             defs.update(op.writes)
@@ -278,13 +280,11 @@ class ControlFlowGraph:
             du.ins = set(node.uses)
             defuses[node] = du
         
-        worklist: List[ControlFlowGraphNode] = [self.exit_node]
-        done = True
-        
         # propagate live variables througout the CFG. May take
         # multiple iterations. We're done when we complete an
         # iteration that makes no changes
         while True:
+            worklist: List[ControlFlowGraphNode] = [self.exit_node]
             done = True
             visited: Set[ControlFlowGraphNode] = set()
 
