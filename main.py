@@ -15,7 +15,7 @@ def print_stuff(print_bytecode, print_cfg, print_domtree):
             func.pretty_print(print_bytecode)
 
             if print_cfg:
-                func.cfg.pretty_print(False, False)
+                func.cfg.pretty_print(True, True)
 
             if print_domtree:
                 print("-- DOMTREE ---------------------------------")

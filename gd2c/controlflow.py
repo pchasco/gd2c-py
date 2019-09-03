@@ -305,7 +305,7 @@ class ControlFlowGraph:
                 # see if we made any changes. We only need to check counts on
                 # sets because liveness analysis only ever grows the sets.
                 if len(du.outs) > pre_outs_count or len(du.ins) > pre_ins_count:
-                    done = False
+                   done = False
 
                 visited.add(node)
                 worklist.extend(self.preds(node))
@@ -376,6 +376,17 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
     # Build entry node.
     entry_node = Block('_entry')
     blocks[entry_node.label] = entry_node
+    # insert parameter ops for all parameters. Parameter ops create
+    # a definition to satisfy SSA
+    parameter_ops = [ParameterGDScriptOp(p) for p in func.parameters()]
+    # Insert empty defs for all values referenced that are defined outside
+    # the function to satisfy SSA
+    parameter_addresses = set([p.address.address for p in func.parameters()])
+    define_ops = [DefineGDScriptOp(c.address.address) for c in func.constants()]
+    for p in parameter_ops:
+        entry_node.append_op(p)
+    for dd in define_ops:
+        entry_node.append_op(dd)
 
     # Build exit node
     exit_node = Block(block_labels[EXIT_NODE_ADDRESS])

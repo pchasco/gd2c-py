@@ -18,31 +18,12 @@ def to_ssa_form(func: GDScriptFunction):
     func.cfg.live_variable_analysis()
 
     _insert_phi_ops(func)
-    _rename_variables(func)
+    #_rename_variables(func)
 
 def _insert_phi_ops(func: GDScriptFunction):
     assert func.cfg
     assert func.cfg.entry_node
     cfg = func.cfg
-
-    # insert parameter ops for all parameters. Parameter ops create
-    # a definition to satisfy SSA
-    parameter_ops = [ParameterGDScriptOp(p) for p in func.parameters()]
-
-    # Insert empty defs for all values referenced that are defined outside
-    # the function to satisfy SSA
-    parameter_addresses = set([GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, p.index) for p in func.parameters()])
-    define_ops = [DefineGDScriptOp(a) for a in cfg.entry_node.ins - parameter_addresses]
-
-    if cfg.entry_node.first_op:
-        first_op = cfg.entry_node.first_op
-        cfg.entry_node.insert_ops_before(first_op, parameter_ops)
-        cfg.entry_node.insert_ops_before(first_op, define_ops)
-    else:
-        for p in parameter_ops:
-            cfg.entry_node.append_op(p)
-        for dd in define_ops:
-            cfg.entry_node.append_op(dd)
 
     cfg.live_variable_analysis()
     dom = build_domtree_naive(cfg)
@@ -60,7 +41,7 @@ def _insert_phi_ops(func: GDScriptFunction):
             block = worklist.pop()
             assert block.first_op
             for d in dom.frontier(block):
-                if d not in has_phi:
+                if d not in has_phi and variable in block.outs:
                     phi = PhiGDScriptOp(variable)
                     if d.first_op:
                         d.insert_ops_before(d.first_op, [phi])
@@ -88,6 +69,7 @@ def _rename_variables(func: GDScriptFunction):
         nonlocal visited
         nonlocal stacks
         nonlocal values
+        nonlocal func
 
         if address not in values:
             value = Value(address, 0)
@@ -107,6 +89,7 @@ def _rename_variables(func: GDScriptFunction):
         nonlocal values
         nonlocal dom
         nonlocal cfg
+        nonlocal func
 
         if block in visited:
             return

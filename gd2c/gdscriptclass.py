@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union, Optional, List, Dict, Set, Iterable, Tuple
 from gd2c.variant import VariantType
 from gd2c.bytecode import GDScriptOp
+from gd2c.address import GDScriptAddress, ADDRESS_MODE_MEMBER, ADDRESS_MODE_LOCALCONSTANT, ADDRESS_MODE_CLASS, ADDRESS_MODE_STACKVARIABLE, ADDRESS_MODE_GLOBAL, ADDRESS_MODE_CLASSCONSTANT
 import re
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ class GDScriptGlobal:
         self.kind_code = kind_code
         self.value = value
         self.source = source
+        self.address = GDScriptAddress.create(ADDRESS_MODE_GLOBAL, index)
 
 class GDScriptFunctionConstant:
     def __init__(self, index: int, vtype: Union[VariantType, str, int], data: bytes, declaration: str):
@@ -22,6 +24,7 @@ class GDScriptFunctionConstant:
         self.vtype = VariantType.get(vtype)
         self.data = data
         self.declaration = declaration
+        self.address = GDScriptAddress.create(ADDRESS_MODE_LOCALCONSTANT, index)
 
 class GDScriptClassConstant:
     def __init__(self, name: str, vtype: Union[VariantType, str, int], data: bytes, declaration: str):
@@ -29,6 +32,7 @@ class GDScriptClassConstant:
         self.vtype = VariantType.get(vtype)
         self.data = data
         self.declaration = declaration
+        #self.address = GDScriptAddress.create(ADDRESS_MODE_CLASSCONSTANT, )
 
 class GDScriptMember:
     def __init__(self, name: str, index: int, vtype: Union[VariantType, str, int]):
@@ -36,18 +40,22 @@ class GDScriptMember:
         self.name = name
         self.index = index
         self.vtype = VariantType.get(vtype)
+        self.address = GDScriptAddress.create(ADDRESS_MODE_MEMBER, index)
 
 class GDScriptFunctionParameter:
     name: str
     vtype: VariantType
     index: int
     is_assigned: Union[bool, None]
+    address: GDScriptAddress
 
     def __init__(self, name: str, vtype: Union[VariantType, int], index: int):
         self.name = name        
         self.vtype = VariantType.get(vtype)
         self.index = index
         self.is_assigned = False
+        self.address = GDScriptAddress.create(ADDRESS_MODE_STACKVARIABLE, index)
+
 
 class GDScriptFunction:
     name: str
@@ -144,7 +152,7 @@ class GDScriptFunction:
         print(f"  Constants:")
         if any(self.constants()):
             for const in sorted(self.constants(), key=lambda v: v.index):
-                print(f"    {str(const.index).ljust(3)}: {const.declaration}")
+                print(f"    {str(GDScriptAddress.calc_address(ADDRESS_MODE_LOCALCONSTANT, const.index)).ljust(3)}: {const.declaration}")
         else:
             print(f"    NONE")
 

@@ -995,9 +995,12 @@ class PhiGDScriptOp(PseudoGDScriptOp):
         self.ssa_values = {}
 
     def __str__(self):
-        d = f"{self.ssa_dest}" if self.ssa_dest is None else self.ssa_dest
-        v = ", ".join([f"({k}: {v})" for k, v in self.ssa_values.items()])
-        return f"PHI {d} = {v}"
+        if self.ssa_dest:
+            d = f"{self.ssa_dest}" if self.ssa_dest is None else self.ssa_dest
+            v = ", ".join([f"({k}: {v})" for k, v in self.ssa_values.items()])
+            return f"PHI {d} = {v}"
+        else:
+            return f"PHI {self.address} = ?"
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,
