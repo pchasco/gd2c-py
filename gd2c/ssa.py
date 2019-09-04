@@ -35,23 +35,22 @@ def _insert_phi_ops(func: GDScriptFunction):
     for variable in defs:
         worklist = set([block for block in cfg.nodes() if variable in block.defs])
         has_phi: Set[Block] = set()        
-        was_on_worklist = set(worklist)
+        visited = set(worklist)
 
         while any(worklist):
             block = worklist.pop()
-            assert block.first_op
             for d in dom.frontier(block):
-                if d not in has_phi and variable in block.outs:
+                if d not in has_phi and variable in d.ins:
+                    has_phi.add(d)
                     phi = PhiGDScriptOp(variable)
                     if d.first_op:
                         d.insert_ops_before(d.first_op, [phi])
                     else:
                         d.append_op(phi)
 
-                    has_phi.add(d)
-                    if d not in was_on_worklist:
+                    if d not in visited:
                         worklist.add(d)
-                        was_on_worklist.add(d)
+                        visited.add(d)
 
 def _rename_variables(func: GDScriptFunction):
     assert func
