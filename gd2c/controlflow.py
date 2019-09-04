@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet, Any, Callable
-from gd2c.bytecode import GDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp, RealReturnGDScriptOp
+from gd2c.bytecode import GDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp, RealReturnGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
 from gd2c.variant import VariantType
@@ -263,7 +263,6 @@ class ControlFlowGraph:
             visited.add(node)
             worklist.extend(self.succs(node))
 
-
     def live_variable_analysis(self):
         class def_use:
             def __init__(self):
@@ -319,6 +318,43 @@ class ControlFlowGraph:
             du = defuses[node]
             node.ins = du.ins
             node.outs = du.outs
+
+    def update_function(self, func: GDScriptFunction):
+        assert func
+        assert not self.is_in_ssa_form
+
+        ops: List[GDScriptOp] = []
+        ip = 0
+        node_ip: Dict[str, int] = {}
+
+        # First write ops, remembering block addresses
+        worklist = [self._entry_node]
+        visited: Set[Block] = set()
+        while any(worklist):
+            node = worklist.pop()
+            assert node
+            if node in visited:
+                continue
+
+            node_ip[node.label] = ip
+            visited.add(node)        
+
+            for op in node.ops:
+                if not isinstance(op, PseudoGDScriptOp):
+                    ops.append(op)
+                    ip += op.stride
+
+        # Update jumps with correct block addresses
+        for node in visited:
+            node_ip[node.label] = ip 
+
+            for op in node.ops:
+                if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+                    branch = "_exit" if op.branch == EXIT_NODE_ADDRESS else f"_{op.branch}"
+                    fallthrough = "_exit" if op.fallthrough == EXIT_NODE_ADDRESS else f"_{op.branch}"
+                    op.branch = node_ip[branch]
+                    op.fallthrough = node_ip[fallthrough]
+
 
     def pretty_print(self, print_def_use: bool = True, print_in_out: bool = True):
         worklist = [self._entry_node]

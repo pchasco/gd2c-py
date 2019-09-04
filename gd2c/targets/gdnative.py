@@ -18,7 +18,7 @@ class GDNativeCodeGen:
         self.output_path = Path(output_path)
 
         self.transforms = [
-            transform.remove_debug_ops #,
+            #transform.remove_debug_ops #,
             #transform.insert_initializers_transformation,
             #transform.insert_destructors_transformation,
             #transform.replace_init_calls_with_noop_transformation,

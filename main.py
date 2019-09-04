@@ -10,7 +10,9 @@ def print_stuff(print_cfg, print_domtree):
         print(f"---------------------------------------------")
         for func in cls.functions():
             assert func.cfg
-            to_ssa_form(func)
+            #to_ssa_form(func)
+            func.pretty_print(True)
+            func.cfg.update_function(func)
 
             if print_cfg:
                 func.cfg.pretty_print(True, True)
@@ -31,6 +33,6 @@ from gd2c.targets.gdnative import GDNativeCodeGen
 #TODO same here. Should probably just have a factory function at module level
 codegen = GDNativeCodeGen(project, "./example/out")
 codegen.transpile()
-print_stuff(True, False)
+print_stuff(False, False)
 
 
