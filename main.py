@@ -2,17 +2,15 @@ from gd2c.project import Project
 from gd2c.domtree import build_domtree_naive
 from gd2c.ssa import to_ssa_form
 
-def print_stuff(print_bytecode, print_cfg, print_domtree):
+def print_stuff(print_cfg, print_domtree):
     from gd2c.controlflow import build_control_flow_graph
     for cls in project.classes():
         print(f"---------------------------------------------")
         print(f"Class: {cls.name}")
         print(f"---------------------------------------------")
         for func in cls.functions():
-            func.cfg = build_control_flow_graph(func)
+            assert func.cfg
             to_ssa_form(func)
-
-            func.pretty_print(print_bytecode)
 
             if print_cfg:
                 func.cfg.pretty_print(True, True)
@@ -32,7 +30,7 @@ project.load_classes()
 from gd2c.targets.gdnative import GDNativeCodeGen
 #TODO same here. Should probably just have a factory function at module level
 codegen = GDNativeCodeGen(project, "./example/out")
-#codegen.transpile()
-print_stuff(False, True, False)
+codegen.transpile()
+print_stuff(True, False)
 
 

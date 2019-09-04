@@ -14,11 +14,21 @@ if TYPE_CHECKING:
 def to_ssa_form(func: GDScriptFunction):
     assert func
     assert func.cfg
+    assert not func.cfg.is_in_ssa_form
 
     func.cfg.live_variable_analysis()
 
     _insert_phi_ops(func)
     _rename_variables(func)
+
+    func.cfg.is_in_ssa_form = True
+
+def from_ssa_form(func: GDScriptFunction):
+    assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
+
+    func.cfg.is_in_ssa_form = False
 
 def _insert_phi_ops(func: GDScriptFunction):
     assert func.cfg

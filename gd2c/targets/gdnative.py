@@ -18,11 +18,12 @@ class GDNativeCodeGen:
         self.output_path = Path(output_path)
 
         self.transforms = [
-            transform.insert_initializers_transformation,
-            transform.insert_destructors_transformation,
-            transform.replace_init_calls_with_noop_transformation,
-            transform.map_variables_transformation,
-            transform.update_mutated_parameter_flags
+            transform.remove_debug_ops #,
+            #transform.insert_initializers_transformation,
+            #transform.insert_destructors_transformation,
+            #transform.replace_init_calls_with_noop_transformation,
+            #transform.map_variables_transformation,
+            #transform.update_mutated_parameter_flags
         ]
 
     @property
@@ -38,8 +39,8 @@ class GDNativeCodeGen:
     def transpile(self):
         self._initialize_contexts()
         self._apply_transformations()
-        self._transpile_header_file()
-        self._transpile_c_file()
+        #self._transpile_header_file()
+        #self._transpile_c_file()
 
     def _initialize_contexts(self):
         def make_context(cls: GDScriptClass, depth: int):

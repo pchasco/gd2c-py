@@ -187,6 +187,7 @@ class ControlFlowGraph:
         self._entry_node: Optional[Block] = None
         self._exit_node: Optional[Block] = None
         self._value_version = 0
+        self.is_in_ssa_form = False
 
     def new_value(self, address: int, vtype: VariantType) -> Value:
         v = Value(address, self._value_version)

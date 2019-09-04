@@ -1,9 +1,35 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, List
 from gd2c.targets._gdnative.variable import *
+from gd2c.controlflow import Block
+from gd2c.bytecode import OPCODE_BREAKPOINT, OPCODE_LINE, GDScriptOp
 
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import GDNativeCodeGen, FunctionContext
+
+def remove_debug_ops(codegen: GDNativeCodeGen):
+    def transform_func(func_context: FunctionContext):
+        assert func_context.func
+        assert func_context.func.cfg
+
+        def visitor(block: Block):
+            remove: List[GDScriptOp] = []
+            for op in block.ops:
+                if op.opcode in (OPCODE_BREAKPOINT, OPCODE_LINE):
+                    remove.append(op)
+
+            for op in remove:
+                print(f"Removing from {block.label} {op}")
+                block.remove_op(op)
+
+        func_context.func.cfg.visit_nodes(visitor)
+    
+    def transform_class(cls, depth):
+        class_context = codegen.class_contexts[cls.type_id]
+        for func_context in class_context.function_contexts.values():
+            transform_func(func_context)
+
+    codegen.project.visit_classes_in_dependency_order(transform_class)  
 
 def update_mutated_parameter_flags(codegen: GDNativeCodeGen):
     from gd2c.analysis import mark_assigned_parameters
