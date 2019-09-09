@@ -1,9 +1,13 @@
-from gd2c.project import Project
-from gd2c.domtree import build_domtree_naive
-from gd2c.ssa import to_ssa_form
+from __future__ import annotations
+from typing import List
+from gd2c.project import load_project, Project
+from gd2c.gdscriptclass import GDScriptClass
+from gd2c import transform
+from gd2c import controlflow
+from gd2c import domtree
+from gd2c import ssa
 
-def print_stuff(print_cfg, print_domtree):
-    from gd2c.controlflow import build_control_flow_graph
+def print_stuff(project, print_cfg, print_domtree):
     for cls in project.classes():
         print(f"---------------------------------------------")
         print(f"Class: {cls.name}")
@@ -19,20 +23,65 @@ def print_stuff(print_cfg, print_domtree):
 
             if print_domtree:
                 print("-- DOMTREE ---------------------------------")
-                tree = build_domtree_naive(cfg)
+                tree = domtree.build_domtree_naive(cfg)
                 tree.pretty_print()
 
         print("\n")
 
-project = Project("./example/source")
-#TODO: Not sure if it is useful to have load method on class itself. Should probably just have a
-#      project.load() function on the module that returns a project instance
-project.load_classes()
+def get_target(target_name: str) -> Target:
+    if target_name == "gdnative":
+        from gd2c.gdnative import GDNativeTarget
+        return GDNativeTarget()
 
-from gd2c.targets.gdnative import GDNativeCodeGen
-#TODO same here. Should probably just have a factory function at module level
-codegen = GDNativeCodeGen(project, "./example/out")
-codegen.transpile()
-print_stuff(False, False)
+    raise Exception("target not known")
+
+def assert_nothing_in_ssa_form(project: Project):
+    for cls in project.iter_classes_in_dependency_order():
+        for func in cls.functions():
+            if func.cfg:
+                assert not func.cfg.is_in_ssa_form
+
+if __name__ == "__main__":   
+    # These should be taken from command line args
+    project_path = "./example/source"
+    project_output_path = "./example/out"
+    project_target = "gdnative"
+    project = load_project(project_path)
+
+    # Phase 1: Compile to intermediate    
+    for cls in project.iter_classes_in_dependency_order():
+        for func in cls.functions():
+            if func.cfg.yields:
+                transform.make_coroutine(func)
+
+            func.cfg = controlflow.build_control_flow_graph(func)
+
+            # Transforms not requiring SSA form
+            transform.expand_jump_to_default_arg(func)
+            transform.remove_debug_ops(func)
+            transform.substitute_intrinsics(func)
+            transform.promote_typed_arithmetic(func)
+
+            # Transforms done in SSA form
+            ssa.to_ssa_form(func)
+            transform.common_subexpression_elimination(func)
+            transform.copy_elimination(func)
+            transform.redundant_phi_arg_elimination(func)
+            transform.dead_code_elimination(func)       
+
+            # Done doing SSA transformations     
+            ssa.from_ssa_form(func)
+
+
+    # Phase 2: Apply target-specific transformations
+    assert_nothing_in_ssa_form(project)
+    target = get_target(project_target)
+    target.transform(project)
+
+
+    # Phase 3: Emit code
+    target.emit(project, project_output_path)
+
+    print_stuff(project, False, False)
 
 

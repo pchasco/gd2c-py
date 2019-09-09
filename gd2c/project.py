@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, Dict, Union, Optional, Callable
+from typing import Iterable, Dict, Union, Optional, Callable, List
 from gd2c.gdscriptclass import GDScriptClass
 from gd2c.loader import JsonGDScriptLoader
 from pathlib import Path, PurePath, PurePosixPath
@@ -115,36 +115,6 @@ class Project:
             del self._classes_by_name[cls.name]
             del self._classes_by_type_id[cls.type_id]
 
-    def load_classes(self):
-        loader = JsonGDScriptLoader(self)
-        stack = [Path(self._root)]
-        count = 0
-
-        # load classes
-        while any(stack):
-            path = stack.pop()
-            for it in path.iterdir():
-                if it.is_dir():
-                    stack.push(it)
-                elif it.is_file():
-                    if str(it).endswith(".gd.json"):
-                        classes = loader.load_classes(it)
-                        for cls in classes:
-                            self.add_class(cls)
-                            count += 1
-
-        # link classes
-        for cls in self._classes_by_type_id.values():
-            if cls.base_resource_path:
-                cls.base = self._classes_by_resource_path[cls.base_resource_path]
-
-        def set_inherited_flag(cls: GDScriptClass, depth: int):
-            if cls.base:
-                for member in cls.members():
-                    member.is_inherited = cls.base.has_member(member.name)
-
-        self.visit_classes_in_dependency_order(set_inherited_flag)
-
     def generate_unique_class_name(self):
         """Generates a type id that is guaranteed to not have been generated for this project.
         """
@@ -172,8 +142,49 @@ class Project:
                 iterate(dep, depth + 1)
 
         [iterate(c, 0) for c in self._classes_by_type_id.values() if not c.base_resource_path]
+
+    def iter_classes_in_dependency_order(self) -> Iterable[GDScriptClass]:
+        classes: List[GDScriptClass] = []
+
+        def iterate(cls, depth):
+            nonlocal classes
+            classes.append(cls)
+            for dep in [c for c in self._classes_by_type_id.values() if c.base is cls]:
+                iterate(dep, depth + 1)
+
+        [iterate(c, 0) for c in self._classes_by_type_id.values() if not c.base_resource_path]
+        return classes
         
+def load_project(root_path: str) -> Project:
+    project = Project(root_path)
 
-            
+    loader = JsonGDScriptLoader(project)
+    stack = [Path(project.root)]
+    count = 0
 
+    # load classes
+    while any(stack):
+        path = stack.pop()
+        for it in path.iterdir():
+            if it.is_dir():
+                stack.append(it)
+            elif it.is_file():
+                if str(it).endswith(".gd.json"):
+                    classes = loader.load_classes(it)
+                    for cls in classes:
+                        project.add_class(cls)
+                        count += 1
 
+    # link classes
+    for cls in project._classes_by_type_id.values():
+        if cls.base_resource_path:
+            cls.base = project.get_class(cls.base_resource_path)
+
+    def set_inherited_flag(cls: GDScriptClass, depth: int):
+        if cls.base:
+            for member in cls.members():
+                member.is_inherited = cls.base.has_member(member.name)
+
+    project.visit_classes_in_dependency_order(set_inherited_flag)
+
+    return project
