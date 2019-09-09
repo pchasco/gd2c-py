@@ -1,7 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict
 from gd2c.address import GDScriptAddress, ADDRESS_MODE_PARAMETER, ADDRESS_MODE_SELF, ADDRESS_MODE_STACKVARIABLE, ADDRESS_MODE_STACK
-from gd2c.bytecode import CallGDScriptOp, CallReturnGDScriptOp, CallSelfBaseGDScriptOp, CallBuiltinGDScriptOp
+from gd2c.bytecode import CallGDScriptOp, CallReturnGDScriptOp, \
+    CallSelfBaseGDScriptOp, CallBuiltinGDScriptOp, YieldGDScriptOp, \
+    YieldSignalGDScriptOp
 
 if TYPE_CHECKING:
     from project import Project
@@ -9,7 +11,21 @@ if TYPE_CHECKING:
 
 DONT_PROPAGATE = True
 
-def mark_assigned_parameters(project: Project) -> None:
+def annotate_coroutines(project: Project) -> None:
+    """Analizes all functions in the project for the yield/yield signal instruction."""
+
+    for cls in project.classes():
+        for func in cls.functions():
+            yields = False
+            for op in func.ops:
+                if isinstance(op, (YieldGDScriptOp, YieldSignalGDScriptOp)):
+                    yields = True
+                    break
+
+            func.yields = yields
+
+
+def annotate_assigned_parameters(project: Project) -> None:
     """Analyzes the project and marks function parameters as const in methods 
     where they are not modified, and not passed to functions that may modify
     them.

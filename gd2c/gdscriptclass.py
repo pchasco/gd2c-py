@@ -70,6 +70,9 @@ class GDScriptFunction:
     _ops: List[Tuple[int, GDScriptOp]]
     _mutates: Set
 
+    # Annotations
+    yields: bool
+
     TYPE_METHOD = 0
     
     def __init__(self, name: str, function_type: int):
@@ -84,6 +87,7 @@ class GDScriptFunction:
         self._constants = {}
         self._ops = []
         self._mutates= set([])
+        self.yields = False
 
     @property
     def len_stack_array(self) -> int:

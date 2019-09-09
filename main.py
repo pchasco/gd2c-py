@@ -6,6 +6,7 @@ from gd2c import transform
 from gd2c import controlflow
 from gd2c import domtree
 from gd2c import ssa
+from gd2c import analysis
 
 def print_stuff(project, print_cfg, print_domtree):
     for cls in project.classes():
@@ -48,26 +49,31 @@ if __name__ == "__main__":
     project_target = "gdnative"
     project = load_project(project_path)
 
+    # Phase 0: Analyze 
+    analysis.annotate_coroutines(project)
+    analysis.annotate_assigned_parameters(project)
+    analysis.annotate_loops(project)
+
     # Phase 1: Compile to intermediate    
     for cls in project.iter_classes_in_dependency_order():
         for func in cls.functions():
-            if func.cfg.yields:
+            if func.yields:
                 transform.make_coroutine(func)
 
             func.cfg = controlflow.build_control_flow_graph(func)
 
             # Transforms not requiring SSA form
             transform.expand_jump_to_default_arg(func)
-            transform.remove_debug_ops(func)
-            transform.substitute_intrinsics(func)
-            transform.promote_typed_arithmetic(func)
+            transform.strip_debug(func)
 
             # Transforms done in SSA form
             ssa.to_ssa_form(func)
+            transform.promote_typed_arithmetic(func)
+            transform.substitute_intrinsics(func)
             transform.common_subexpression_elimination(func)
             transform.copy_elimination(func)
             transform.redundant_phi_arg_elimination(func)
-            transform.dead_code_elimination(func)       
+            transform.dead_code_elimination(func)    
 
             # Done doing SSA transformations     
             ssa.from_ssa_form(func)
