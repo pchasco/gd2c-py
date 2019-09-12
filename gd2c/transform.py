@@ -74,6 +74,8 @@ def promote_typed_arithmetic(func: GDScriptFunction) -> bool:
     3. The result of the operation can be reused at least once before
        being boxed back into a variant.
 
+    TODO: The above should be profiled, probably on a target basis
+
     An example of an operation that would not be promoted to typed
     arithmetic could be as follows:
 
