@@ -55,12 +55,12 @@ def annotate_assigned_parameters(func: GDScriptFunction) -> None:
                 continue
 
             addr = GDScriptAddress.calc_address(ADDRESS_MODE_STACK, p.index)
-            if addr in node.block.defs:
+            if addr in node.defs:
                 p.is_assigned = True
                 changed = True
             else:
                 addr = GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, p.index)
-                if addr in node.block.defs:
+                if addr in node.defs:
                     p.is_assigned = True
                     changed = True
 
@@ -69,7 +69,7 @@ def annotate_assigned_parameters(func: GDScriptFunction) -> None:
 
         # Second check is to see if the parameter is passed to any function
         # that may assign the value
-        for op in node.block.ops:
+        for op in node.ops:
             callee: Union[GDScriptFunction, None] = None
             args: Union[FrozenSet[int], None] = None
             is_call = False

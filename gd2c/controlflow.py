@@ -148,6 +148,12 @@ class Block:
                     op.fallthrough = new_addr
                 if op.branch == old_addr:
                     op.branch = new_addr
+            elif self._locked and isinstance(op, JumpToDefaultArgumentGDScriptOp):
+                if op.fallthrough == old_addr:
+                    op.fallthrough = new_addr
+                for i, ip in enumerate(op.jump_table):
+                    if ip == old_addr:
+                        op.jump_table[i] = new_addr
 
     def update_def_use(self):
         defs = set()
@@ -355,6 +361,11 @@ class ControlFlowGraph:
                     fallthrough = "_exit" if op.fallthrough == EXIT_NODE_ADDRESS else f"_{op.fallthrough}"
                     op.branch = node_ip[branch]
                     op.fallthrough = node_ip[fallthrough]
+                elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
+                    op.fallthrough = node_ip[f"_{op.fallthrough}"]
+                    for i, ip in enumerate(op.jump_table):
+                        label = f"_{ip}"
+                        op.jump_table[i] = node_ip[label]
 
         # Finally update function ops.
         # Must do this in the same order as above loops
@@ -382,13 +393,16 @@ class ControlFlowGraph:
                 # Here we assume nodes are labeled with the address of the block that created them
                 worklist.append(self._nodes[str(node.last_op.fallthrough)])                
                 worklist.append(self._nodes[str(node.last_op.branch)])
+            elif ('0' in self._nodes) and isinstance(node.last_op, JumpToDefaultArgumentGDScriptOp):
+                worklist.append(self._nodes[str(node.last_op.fallthrough)])
+                worklist.extend([self._nodes[str(ip)] for ip in node.last_op.jump_table])
             else:
                 worklist.extend(self.succs(node))
 
             succs = [n.dest.label for n in node.edges]
 
             print(f"+------------------------------------------------")
-            print(f"| Block: {node.label} : Type: {['Normal', 'If', 'Return', 'Exit'][node.block_type]}")
+            print(f"| Block: {node.label} : Type: {['Normal', 'If', 'Return', 'Exit', 'Defarg'][node.block_type]}")
             print(f"| Preds: {', '.join(map(lambda n: n.label, self.preds(node)))} : Succs: {', '.join(succs)}")
             print(f"|------------------------------------------------")
             if print_def_use:
@@ -460,7 +474,7 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
                 block.block_type = BLOCK_TYPE_NORMAL
                 block_edges[block] = [ip]
                 jumpop = JumpGDScriptOp(ip)
-                block.append_op(op)
+                block.append_op(jumpop)
 
             block_labels[ip] = f'_{str(ip)}'
             block = Block(block_labels[ip])
@@ -497,7 +511,9 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
         elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
             new_block_flag = True
             block.block_type = BLOCK_TYPE_DEFARGS
-            block_edges[block] = op.jump_table
+            block_edges[block] = [ip + op.stride]
+            block_edges[block].extend(op.jump_table)
+            block.append_op(op)
         else:
             block.append_op(op)
             is_block_closed = False
@@ -516,8 +532,8 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
             block.edges = [Edge(block, blocks[block_labels[block_edges[block][0]]])]
         elif block.block_type in (BLOCK_TYPE_BRANCH, BLOCK_TYPE_DEFARGS):
             block.edges = [
-                Edge(block, blocks[block_labels[block_edges[block][i]]])
-                for i in range(len(block_edges[block]))
+                Edge(block, blocks[block_labels[be]])
+                for i, be in enumerate(block_edges[block])
             ]
         elif block.block_type == BLOCK_TYPE_RETURN:
             # Return always links to exit node

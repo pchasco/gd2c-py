@@ -65,7 +65,9 @@ if __name__ == "__main__":
             if func.yields:
                 transform.make_coroutine(func)
 
+            func.pretty_print(True)
             func.cfg = controlflow.build_control_flow_graph(func)
+            func.cfg.pretty_print()
 
             # Transforms not requiring SSA form
             transform.strip_debug(func)

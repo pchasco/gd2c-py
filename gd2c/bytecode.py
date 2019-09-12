@@ -865,20 +865,22 @@ class JumpIfNotGDScriptOp(GDScriptOp):
 class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
     jump_table: List[int]
 
-    def __init__(self, jump_table: Iterable[int]):
+    def __init__(self, jump_table: Iterable[int], fallthrough: int):
         super().__init__(OPCODE_JUMPTODEFAULTARGUMENT)
         self.jump_table = list(jump_table)[:]
+        self.fallthrough = fallthrough
 
     def __str__(self):
-        return f"DEFAULT"
+        jt = ", ".join([f"{i}: {str(v)}" for i, v in enumerate(self.jump_table)])
+        return f"DEFAULT {jt}, {len(self.jump_table)}: {self.fallthrough}"
 
     @property
     def stride(self) -> int:
-        return 3
+        return 1
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpToDefaultArgumentGDScriptOp':
-        return JumpToDefaultArgumentGDScriptOp(func.default_arguments_jump_table)
+        return JumpToDefaultArgumentGDScriptOp(func.default_arguments_jump_table, index + 1)
 
 class LineGDScriptOp(GDScriptOp):
     line_number: int
