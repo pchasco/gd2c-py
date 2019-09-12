@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Union, List, Set, FrozenSet, Optional, Dict, IO
+from typing import Union, List, Set, FrozenSet, Optional, Dict, IO, Callable
 from pathlib import Path
 from gd2c.project import Project
+from gd2c.target import Target
 from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
 from gd2c.targets._gdnative.context import ClassContext, FunctionContext
 from gd2c.controlflow import ControlFlowGraph, build_control_flow_graph
@@ -11,20 +12,14 @@ import gd2c.targets._gdnative.class_codegen as class_codegen
 import gd2c.targets._gdnative.function_codegen as function_codegen
 
 
+class GDNativeTarget(Target):
+    pass
+
 class GDNativeCodeGen:
     def __init__(self, project: Project, output_path: Union[str, Path]):
         self.project = project
         self.class_contexts: Dict[int, ClassContext] = {}
         self.output_path = Path(output_path)
-
-        self.transforms = [
-            #transform.remove_debug_ops #,
-            #transform.insert_initializers_transformation,
-            #transform.insert_destructors_transformation,
-            #transform.replace_init_calls_with_noop_transformation,
-            #transform.map_variables_transformation,
-            #transform.update_mutated_parameter_flags
-        ]
 
     @property
     def output_path(self) -> Path:

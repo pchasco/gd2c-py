@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet, Any, Callable
-from gd2c.bytecode import GDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp, RealReturnGDScriptOp
+from gd2c.bytecode import GDScriptOp, JumpToDefaultArgumentGDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp, RealReturnGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
 from gd2c.variant import VariantType
@@ -11,6 +11,7 @@ BLOCK_TYPE_NORMAL = 0
 BLOCK_TYPE_BRANCH = 1
 BLOCK_TYPE_RETURN = 2
 BLOCK_TYPE_EXIT = 3
+BLOCK_TYPE_DEFARGS = 4
 
 class Value:
     # identifies the source address of the value
@@ -323,7 +324,7 @@ class ControlFlowGraph:
         assert func
         assert not self.is_in_ssa_form
 
-        ops: List[GDScriptOp] = []
+        ops: List[Tuple[int, GDScriptOp]] = []
         ip = 0
         node_ip: Dict[str, int] = {}
 
@@ -341,20 +342,26 @@ class ControlFlowGraph:
 
             for op in node.ops:
                 if not isinstance(op, PseudoGDScriptOp):
-                    ops.append(op)
+                    ops.append((ip, op))
                     ip += op.stride
+
+            worklist.extend(self.succs(node))
 
         # Update jumps with correct block addresses
         for node in visited:
-            node_ip[node.label] = ip 
-
             for op in node.ops:
                 if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
                     branch = "_exit" if op.branch == EXIT_NODE_ADDRESS else f"_{op.branch}"
-                    fallthrough = "_exit" if op.fallthrough == EXIT_NODE_ADDRESS else f"_{op.branch}"
+                    fallthrough = "_exit" if op.fallthrough == EXIT_NODE_ADDRESS else f"_{op.fallthrough}"
                     op.branch = node_ip[branch]
                     op.fallthrough = node_ip[fallthrough]
 
+        # Finally update function ops.
+        # Must do this in the same order as above loops
+        ip = 0
+        func.clear_ops()
+        for ip, op in ops:
+            func.add_op(ip, op)
 
     def pretty_print(self, print_def_use: bool = True, print_in_out: bool = True):
         worklist = [self._entry_node]
@@ -437,6 +444,8 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
     for ip, op in func.ops():
         if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
             jump_targets = jump_targets | set((op.branch, op.fallthrough))
+        elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
+            jump_targets = jump_targets | set(op.jump_table)
 
     # find blocks and create nodes
 
@@ -485,6 +494,10 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
             block.block_type = BLOCK_TYPE_NORMAL
             block_edges[block] = [op.branch, op.fallthrough]
             block.append_op(op)
+        elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
+            new_block_flag = True
+            block.block_type = BLOCK_TYPE_DEFARGS
+            block_edges[block] = op.jump_table
         else:
             block.append_op(op)
             is_block_closed = False
@@ -501,11 +514,11 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
         elif block.block_type == BLOCK_TYPE_NORMAL:
             # Normal block has only one edge
             block.edges = [Edge(block, blocks[block_labels[block_edges[block][0]]])]
-        elif block.block_type == BLOCK_TYPE_BRANCH:
-            # Branch block has two edges, [0] is for control == True, [1] control == False
+        elif block.block_type in (BLOCK_TYPE_BRANCH, BLOCK_TYPE_DEFARGS):
             block.edges = [
-                Edge(block, blocks[block_labels[block_edges[block][0]]]),
-                Edge(block, blocks[block_labels[block_edges[block][1]]])]
+                Edge(block, blocks[block_labels[block_edges[block][i]]])
+                for i in range(len(block_edges[block]))
+            ]
         elif block.block_type == BLOCK_TYPE_RETURN:
             # Return always links to exit node
             block.edges = [Edge(block, blocks[block_labels[EXIT_NODE_ADDRESS]])]

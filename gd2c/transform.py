@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import List
+from typing import List, Optional
 from gd2c.project import Project
 from gd2c.gdscriptclass import GDScriptFunction
 from gd2c.controlflow import build_control_flow_graph, Block
-from gd2c.bytecode import OPCODE_BREAKPOINT, OPCODE_LINE, GDScriptOp
+from gd2c.bytecode import OPCODE_BREAKPOINT, OPCODE_LINE, GDScriptOp, JumpToDefaultArgumentGDScriptOp
  
-def strip_debug(func: GDScriptFunction):
+def strip_debug(func: GDScriptFunction) -> bool:
     """Strips debug instructions from bytecode.
     
     Arguments:
@@ -13,18 +13,24 @@ def strip_debug(func: GDScriptFunction):
     """
     assert func
     assert func.cfg
+    assert not func.cfg.is_in_ssa_form
+
+    made_changes = False
 
     def visitor(block: Block):
+        nonlocal made_changes
         remove: List[GDScriptOp] = []
         for op in block.ops:
             if op.opcode in (OPCODE_BREAKPOINT, OPCODE_LINE):
                 remove.append(op)
+                made_changes = True
 
         for op in remove:
             print(f"Removing from {block.label} {op}")
             block.remove_op(op)
 
     func.cfg.visit_nodes(visitor)
+    return made_changes
 
 def make_coroutine(func: GDScriptFunction):
     """Transforms the function into a coroutine that can be yielded and
@@ -32,40 +38,29 @@ def make_coroutine(func: GDScriptFunction):
     instance which may or may not be completed when control is passed back 
     to the caller.
 
-    Any functions that yield must be transformed into a coroutine in order
-    for yield/resume to work correctly.
-
     Arguments:
     func -- Any function that yields or that calls a function that yields.
     """
     assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
 
     raise NotImplementedError()
 
-def expand_jump_to_default_arg(func: GDScriptFunction):
-    """Expands the jump to default argument GDScript instruction
-    into step-by-step bytecode. The CFG will be altered by inserting
-    blocks for branches to the default argument assignments.
-
-    The reason for expanding the jump to default arguments instruction
-    is so that each assignment is visible to the optimizer and code
-    generator, with the opportunity to optimize away unneeded assignments.
-    """
-    assert func
-
-    print("expand_jump_to_default_arg not implemented")
-
-def substitute_intrinsics(func: GDScriptFunction):
+def substitute_intrinsics(func: GDScriptFunction) -> bool:
     """Identifies calls and/or sequences of operations that can be
     substituted with more optimized versions. These intrinsics are
     target-agnostic. Specific targets may implement their own
     set of intrinsic operations.
     """
     assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
 
     print("substitute_intrinsics not implemented")
+    return False
 
-def promote_typed_arithmetic(func: GDScriptFunction):
+def promote_typed_arithmetic(func: GDScriptFunction) -> bool:
     """Evaluates arithmetic operations for opportunities to promote
     to typed arithmetic over using variant arithmetic. Type annotations
     from GDScript are assumed to be accurate. When identified, assignments
@@ -107,5 +102,54 @@ def promote_typed_arithmetic(func: GDScriptFunction):
     return rv;
     """
     assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
     print("promote_typed_arithmetic not implemented")
+    return False
+
+def common_subexpression_elimination(func: GDScriptFunction, max_iterations: int = 0) -> bool:
+    """Identifies expressions which are being performed more than once
+    which are guaranteed to have the same result. The redundant calculations
+    will be eliminated and the result of the first instance reused.
+
+    Often performing this iteratively can further eliminate duplicate expressions.
+
+    Arguments:
+    func - Function to optimize. Its cfg must be populated.
+
+    """
+    assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
+    print("common_subexpression_elimination not implemented")
+    return False
+
+def copy_elimination(func: GDScriptFunction) -> bool:
+    """Identifies and eliminates unnecessary copies.
+    TODO: Is this even necessary? Won't cse elimination take care of this?
+    """
+    assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
+    print("copy_elimination not implemented")
+    return False
+
+
+def redundant_phi_arg_elimination(func: GDScriptFunction) -> bool:
+    """Identifies phi ops who have the same def repeated in its operands.
+    """
+    assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
+    print("redundant_phi_arg_elimination not implemented")
+    return False
+
+def dead_code_elimination(func: GDScriptFunction) -> bool:
+    """Removes unreachable code"""
+    assert func
+    assert func.cfg
+    assert func.cfg.is_in_ssa_form
+    print("dead_code_elimination not implemented")
+    return False
+
 

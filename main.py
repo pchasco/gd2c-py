@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List
 from gd2c.project import load_project, Project
 from gd2c.gdscriptclass import GDScriptClass
+from gd2c.target import Target
 from gd2c import transform
 from gd2c import controlflow
 from gd2c import domtree
@@ -14,10 +15,11 @@ def print_stuff(project, print_cfg, print_domtree):
         print(f"Class: {cls.name}")
         print(f"---------------------------------------------")
         for func in cls.functions():
-            assert func.cfg
+            if func.cfg is None:
+                func.cfg = controlflow.build_control_flow_graph(func)
             #to_ssa_form(func)
             func.pretty_print(True)
-            func.cfg.update_function(func)
+            #func.cfg.update_function(func)
 
             if print_cfg:
                 func.cfg.pretty_print(True, True)
@@ -31,7 +33,7 @@ def print_stuff(project, print_cfg, print_domtree):
 
 def get_target(target_name: str) -> Target:
     if target_name == "gdnative":
-        from gd2c.gdnative import GDNativeTarget
+        from gd2c.targets.gdnative import GDNativeTarget
         return GDNativeTarget()
 
     raise Exception("target not known")
@@ -50,9 +52,12 @@ if __name__ == "__main__":
     project = load_project(project_path)
 
     # Phase 0: Analyze 
-    analysis.annotate_coroutines(project)
-    analysis.annotate_assigned_parameters(project)
-    analysis.annotate_loops(project)
+    for cls in project.iter_classes_in_dependency_order():
+        for func in cls.functions():
+            func.cfg = controlflow.build_control_flow_graph(func)
+            analysis.annotate_coroutines(func)
+            analysis.annotate_assigned_parameters(func)
+            analysis.annotate_loops(func)
 
     # Phase 1: Compile to intermediate    
     for cls in project.iter_classes_in_dependency_order():
@@ -63,24 +68,31 @@ if __name__ == "__main__":
             func.cfg = controlflow.build_control_flow_graph(func)
 
             # Transforms not requiring SSA form
-            transform.expand_jump_to_default_arg(func)
             transform.strip_debug(func)
 
             # Transforms done in SSA form
-            ssa.to_ssa_form(func)
-            transform.promote_typed_arithmetic(func)
-            transform.substitute_intrinsics(func)
-            transform.common_subexpression_elimination(func)
-            transform.copy_elimination(func)
-            transform.redundant_phi_arg_elimination(func)
-            transform.dead_code_elimination(func)    
+            if False:
+                ssa.to_ssa_form(func)
+                transform.promote_typed_arithmetic(func)
+                transform.substitute_intrinsics(func)
 
-            # Done doing SSA transformations     
-            ssa.from_ssa_form(func)
+                iteration_count = 0
+                iterate = True
+                while iterate and iteration_count < 10:
+                    iterate = any([
+                        transform.common_subexpression_elimination(func),
+                        transform.copy_elimination(func),
+                        transform.dead_code_elimination(func),
+                        transform.redundant_phi_arg_elimination(func)])
+
+                # Done doing SSA transformations     
+                ssa.from_ssa_form(func)
+            
+            func.cfg.update_function(func)
+            func.cfg = None
 
 
     # Phase 2: Apply target-specific transformations
-    assert_nothing_in_ssa_form(project)
     target = get_target(project_target)
     target.transform(project)
 

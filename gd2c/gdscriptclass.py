@@ -133,6 +133,9 @@ class GDScriptFunction:
     def add_op(self, addr: int, op: GDScriptOp):
         self._ops.append((addr, op))
 
+    def clear_ops(self):
+        self._ops = []
+
     def pretty_print(self, print_bytecode=True):
         print(f"Function: {self.name}")
         print(f"  Return type: {self.return_vtype}")

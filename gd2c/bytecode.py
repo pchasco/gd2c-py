@@ -750,42 +750,6 @@ class CallSelfBaseGDScriptOp(GDScriptOp):
             bytecode[index + 1],
             bytecode[index + 3 : index + 3 + count])
 
-class YieldGDScriptOp(GDScriptOp):
-    def __init__(self):
-        super().__init__(OPCODE_YIELD)
-
-    @property
-    def stride(self) -> int:
-        return 2
-
-    @staticmethod
-    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'YieldGDScriptOp':
-        return YieldGDScriptOp()
-
-class YieldSignalGDScriptOp(GDScriptOp):
-    def __init__(self):
-        super().__init__(OPCODE_YIELDSIGNAL)
-
-    @property
-    def stride(self) -> int:
-        return 4
-
-    @staticmethod
-    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'YieldSignalGDScriptOp':
-        return YieldSignalGDScriptOp()
-
-class YieldResumeGDScriptOp(GDScriptOp):
-    def __init__(self):
-        super().__init__(OPCODE_YIELDRESUME)
-
-    @property
-    def stride(self) -> int:
-        return 2
-
-    @staticmethod
-    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'YieldResumeGDScriptOp':
-        return YieldResumeGDScriptOp()
-
 class CallBuiltinGDScriptOp(GDScriptOp):
     dest: int
     arg_count: int
@@ -1037,6 +1001,7 @@ class PhiGDScriptOp(PseudoGDScriptOp):
             return f"PHI {d} = {v}"
         else:
             return f"PHI {self.address} = ?"
+
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,

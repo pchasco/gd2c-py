@@ -41,3 +41,6 @@ func nested_loop():
 		while a < 10:
 			a += 1
 		b += 1
+
+func with_defargs(a, b = 1, c = 2):
+	return a + b + c
