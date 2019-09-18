@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet, Any, Callable
-from gd2c.bytecode import GDScriptOp, JumpToDefaultArgumentGDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp, RealReturnGDScriptOp
+from gd2c.bytecode import GDScriptOp, JumpToDefaultArgumentGDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
 from gd2c.variant import VariantType
@@ -113,6 +113,12 @@ class Block:
             raise Exception("Cannot insert instruction that would alter control flow")
 
         self._ops.append(op)
+
+    def append_ops(self, ops: Iterable[GDScriptOp]):
+        """Appends operations to the end of the block. If the block is locked, inserting
+        a branch instruction will raise an error."""
+        for op in ops:
+            self.append_op(op)
     
     def insert_ops_before(self, insert_before: Union[GDScriptOp], ops: Iterable[GDScriptOp]):
         """Insert a sequence of ops into the block before GDScriptOp insert_before.
@@ -254,6 +260,16 @@ class ControlFlowGraph:
 
     def node(self, label: str) -> Optional[Block]:
         return self._nodes.get(label, None)
+
+    def node_label_from_address(self, original_node_address: int) -> str:
+        if original_node_address == EXIT_NODE_ADDRESS:
+            return f"_exit"
+        
+        return f"_{original_node_address}"
+
+    def node_from_address(self, original_node_address: int) -> Block:
+        label = self.node_label_from_address(original_node_address)
+        return self._nodes[label]
         
     def visit_nodes(self, visitor: Callable[[Block], None]):
         assert self.entry_node
@@ -357,14 +373,14 @@ class ControlFlowGraph:
         for node in visited:
             for op in node.ops:
                 if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
-                    branch = "_exit" if op.branch == EXIT_NODE_ADDRESS else f"_{op.branch}"
-                    fallthrough = "_exit" if op.fallthrough == EXIT_NODE_ADDRESS else f"_{op.fallthrough}"
+                    branch = self.node_label_from_address(op.branch)
+                    fallthrough = self.node_label_from_address(op.fallthrough)
                     op.branch = node_ip[branch]
                     op.fallthrough = node_ip[fallthrough]
                 elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
-                    op.fallthrough = node_ip[f"_{op.fallthrough}"]
+                    op.fallthrough = node_ip[self.node_label_from_address(op.fallthrough)]
                     for i, ip in enumerate(op.jump_table):
-                        label = f"_{ip}"
+                        label = self.node_label_from_address(ip)
                         op.jump_table[i] = node_ip[label]
 
         # Finally update function ops.
@@ -445,6 +461,7 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
         entry_node.append_op(p)
     for dd in define_ops:
         entry_node.append_op(dd)
+    entry_node.append_op(JumpGDScriptOp(0))
 
     # Build exit node
     exit_node = Block(block_labels[EXIT_NODE_ADDRESS])
@@ -481,6 +498,7 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
             blocks[block.label] = block
             new_block_flag = False
 
+        #TODO: This is a little silly... must be a better way
         if isinstance(op, (EndGDScriptOp, ReturnGDScriptOp)):
             new_block_flag = True
             block.block_type = BLOCK_TYPE_NORMAL
@@ -511,7 +529,7 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
         elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
             new_block_flag = True
             block.block_type = BLOCK_TYPE_DEFARGS
-            block_edges[block] = [ip + op.stride]
+            block_edges[block] = [op.fallthrough]
             block_edges[block].extend(op.jump_table)
             block.append_op(op)
         else:

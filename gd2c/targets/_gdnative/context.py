@@ -1,35 +1,134 @@
 from __future__ import annotations
 from typing import Union, List, Set, FrozenSet, Optional, Dict, IO, TYPE_CHECKING
 from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
+from gd2c.address import *
 
-class Value:
-    def __init__(self, id: int):
-        self.id = id
+class Variable:
+    class_context: 'ClassContext'
+    func_context: 'FunctionContext'
+    address: GDScriptAddress
+    var_type: int
+    cls: GDScriptClass
+    _identifier: str
+    
+    def __init__(self, class_context: 'ClassContext', func_context: 'FunctionContext', address: int):
+        self.class_context = class_context
+        self.func_context = func_context
+        self.address = GDScriptAddress(address)
+
+        self._identifier = ""
+
+        if self.address.mode == ADDRESS_MODE_STACK or self.address.mode == ADDRESS_MODE_STACKVARIABLE:
+            if self.address.offset >= func_context.func.len_parameters:
+                self.identifier = f"st_{self.address.address}"
+
+    def define(self) -> str:
+        assert self.identifier
+        return f"godot_variant {self.identifier};\n"    
+
+    def needs_definition(self) -> bool:
+        return self.address.mode in (ADDRESS_MODE_STACK, ADDRESS_MODE_STACKVARIABLE) \
+            and self.address.offset >= self.func_context.func.len_parameters
+
+    def value(self) -> str:
+        if self.address.mode == ADDRESS_MODE_SELF:
+            return f"p_user_data->__self"
+        elif self.address.mode == ADDRESS_MODE_CLASS:
+            pass
+        elif self.address.mode == ADDRESS_MODE_MEMBER:
+            pass
+        elif self.address.mode == ADDRESS_MODE_CLASSCONSTANT:
+            pass
+        elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT:
+            return f"{self.func_context.local_constants_array_identifier}[{self.address.offset}]"
+        elif self.address.mode == ADDRESS_MODE_STACK or self.address.mode == ADDRESS_MODE_STACKVARIABLE:
+            if self.address.offset < self.func_context.func.len_parameters:
+                return f"*p_args[{self.address.offset}]"
+            else:
+                return f"stack[{self.address.offset - self.func_context.func.len_parameters}]"
+        elif self.address.mode == ADDRESS_MODE_GLOBAL:
+            pass
+        elif self.address.mode == ADDRESS_MODE_NAMEDGLOBAL:
+            pass
+        elif self.address.mode == ADDRESS_MODE_NIL:
+            return "__nil"
+        elif self.address.mode == ADDRESS_MODE_PARAMETER:
+            pass
+        elif self.address.mode == ADDRESS_MODE_TEMPORARY:
+            pass
+        elif self.address.mode == ADDRESS_MODE_SETTERVALUEPARAMETER:
+            pass
+
+        return f"{AddressModePrefix[self.address.mode]}_{self.address.address}"
+
+    def address_of(self) -> str:
+        if self.address.mode == ADDRESS_MODE_SELF:
+            return f"&p_user_data->self"
+        elif self.address.mode == ADDRESS_MODE_CLASS:
+            pass
+        elif self.address.mode == ADDRESS_MODE_MEMBER:
+            pass
+        elif self.address.mode == ADDRESS_MODE_CLASSCONSTANT:
+            pass
+        elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT:
+            return f"&{self.func_context.local_constants_array_identifier}[{self.address.offset}]"
+        elif self.address.mode == ADDRESS_MODE_STACK or self.address.mode == ADDRESS_MODE_STACKVARIABLE:
+            if self.address.offset < self.func_context.func.len_parameters:
+                return f"p_args[{self.address.offset}]"
+            else:
+                return f"&{self.identifier}"
+        elif self.address.mode == ADDRESS_MODE_GLOBAL:
+            pass
+        elif self.address.mode == ADDRESS_MODE_NAMEDGLOBAL:
+            pass
+        elif self.address.mode == ADDRESS_MODE_NIL:
+            return "&__nil"
+        elif self.address.mode == ADDRESS_MODE_PARAMETER:
+            pass
+        elif self.address.mode == ADDRESS_MODE_TEMPORARY:
+            pass
+        elif self.address.mode == ADDRESS_MODE_SETTERVALUEPARAMETER:
+            pass
+
+        return f"&{AddressModePrefix[self.address.mode]}_{self.address.address}"
+
 
 class FunctionContext:
     func: GDScriptFunction
     class_context: ClassContext
-    constants_array_identifier: str
-    constants_initialized_identifier: str
-    function_identifier: str
-    paramters_identifier: str
-    global_names_identifier: str
-    values: List[int]
+    variables: Dict[int, Variable]
+    local_constants_array_identifier: str
 
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
-        self.func = func
-        self.class_context = class_context
-        self.constants_array_identifier = f"{class_context.cls.name}_{self.func.name}_constants"
-        self.constants_initialized_identifier = f"{class_context.cls.name}_{self.func.name}_constants_initialized"
-        self.function_identifier = f"{class_context.cls.name}_func_{self.func.name}"
-        self.parameters_identifier = "p_args"
-        self.global_names_identifier = f"{class_context.cls.name}_global_names"
-        self.values = []
+        assert func
+        assert func.cfg
+        assert class_context
 
-    def new_value(self):
-        value = Value(len(self.values))
-        self.values.append(value)
-        return value
+        self.func = func
+        self.class_context = class_context    
+        self.function_identifier =  f"{self.class_context.cls.name}_{self.func.name}_func"
+        self.local_constants_array_identifier = f"{self.class_context.cls.name}_{self.func.name}_local_const"
+        self.initialized_local_constants_array_identifier = f"{self.class_context.cls.name}_{self.func.name}_local_const_initialized"
+        self.init_variables()
+
+    def init_variables(self) -> None:
+        assert self.func
+        assert self.func.cfg
+
+        self.func.cfg.live_variable_analysis()
+
+        all_addr: Set[int] = set()
+
+        for block in self.func.cfg.nodes():
+            all_addr.update(block.defs)
+            all_addr.update(block.uses)
+
+        variables: Dict[int, Variable] = {}
+        for addr in all_addr:
+            variables[addr] = Variable(self.class_context, self, addr)
+
+        self.variables = variables
+        
 
 class VtableEntry:
     func_context: FunctionContext

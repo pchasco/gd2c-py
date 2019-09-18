@@ -44,3 +44,6 @@ func nested_loop():
 
 func with_defargs(a, b = 1, c = 2):
 	return a + b + c
+
+func godot_array_set(arr):
+	arr[0] = 0

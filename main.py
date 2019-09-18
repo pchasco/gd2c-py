@@ -31,10 +31,10 @@ def print_stuff(project, print_cfg, print_domtree):
 
         print("\n")
 
-def get_target(target_name: str) -> Target:
+def get_target(target_name: str, project: Project) -> Target:
     if target_name == "gdnative":
         from gd2c.targets.gdnative import GDNativeTarget
-        return GDNativeTarget()
+        return GDNativeTarget(project)
 
     raise Exception("target not known")
 
@@ -65,9 +65,8 @@ if __name__ == "__main__":
             if func.yields:
                 transform.make_coroutine(func)
 
-            func.pretty_print(True)
             func.cfg = controlflow.build_control_flow_graph(func)
-            func.cfg.pretty_print()
+            # func.cfg.pretty_print()
 
             # Transforms not requiring SSA form
             transform.strip_debug(func)
@@ -95,13 +94,13 @@ if __name__ == "__main__":
 
 
     # Phase 2: Apply target-specific transformations
-    target = get_target(project_target)
-    target.transform(project)
+    target = get_target(project_target, project)
+    target.transform()
 
 
     # Phase 3: Emit code
-    target.emit(project, project_output_path)
+    target.emit(project_output_path)
 
-    print_stuff(project, False, False)
+    # print_stuff(project, False, False)
 
 

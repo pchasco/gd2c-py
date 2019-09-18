@@ -55,9 +55,8 @@ OPCODE_DESTROY = 1002
 OPCODE_UNBOX = 1003
 OPCODE_DEFINE = 1004
 OPCODE_INITIALIZE = 1005
-OPCODE_REAL_RETURN = 1006
-OPCODE_PARAMETER = 1007
-OPCODE_PHI = 1008
+OPCODE_PARAMETER = 1006
+OPCODE_PHI = 1007
 
 # Comparison
 OPERATOR_EQUAL = 0
@@ -157,6 +156,10 @@ class GDScriptOp:
     @property
     def stride(self) -> int:
         raise Exception("not implemented")
+
+    @property
+    def has_side_effects(self) -> bool:
+        return False
 
 class NoopGDScriptOp(GDScriptOp):
     def __init__(self):
@@ -864,6 +867,7 @@ class JumpIfNotGDScriptOp(GDScriptOp):
 
 class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
     jump_table: List[int]
+    fallthrough: int
 
     def __init__(self, jump_table: Iterable[int], fallthrough: int):
         super().__init__(OPCODE_JUMPTODEFAULTARGUMENT)
@@ -952,19 +956,6 @@ class DefineGDScriptOp(PseudoGDScriptOp):
         else:
             return f"DEFINE {self.address}"
 
-class DestroyGDScriptOp(PseudoGDScriptOp):
-    address: int
-    ssa_address: Optional[Value]
-
-    def __init__(self, address: int):
-        super().__init__(OPCODE_DESTROY)
-        self.address = address
-        self._writes = set([address])
-        self.ssa_address = None
-
-    def __str__(self):
-        return f"DESTROY {self.address}"
-
 class InitializeGDScriptOp(PseudoGDScriptOp):
     address: int
     ssa_address: Optional[Value]
@@ -978,12 +969,22 @@ class InitializeGDScriptOp(PseudoGDScriptOp):
     def __str__(self):
         return f"INIT {self.address}"
 
-class RealReturnGDScriptOp(PseudoGDScriptOp):
-    def __init__(self):
-        super().__init__(OPCODE_REAL_RETURN)
+class DestroyGDScriptOp(PseudoGDScriptOp):
+    address: int
+    ssa_address: Optional[Value]
+
+    def __init__(self, address: int):
+        super().__init__(OPCODE_DESTROY)
+        self.address = address
+        self._writes = set([address])
+        self.ssa_address = None
 
     def __str__(self):
-        return f"RRETURN"
+        return f"DESTROY {self.address}"
+
+    @property
+    def has_side_effects(self) -> bool:
+        return True
 
 class PhiGDScriptOp(PseudoGDScriptOp):
     address: int
@@ -1053,7 +1054,6 @@ _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDS
     OPCODE_DESTROY: None,
     OPCODE_UNBOX: None,
     OPCODE_INITIALIZE: None,
-    OPCODE_REAL_RETURN: None,
     OPCODE_PARAMETER: None,
     OPCODE_PHI: None
 }

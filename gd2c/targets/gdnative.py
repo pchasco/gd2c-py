@@ -5,15 +5,32 @@ from gd2c.project import Project
 from gd2c.target import Target
 from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
 from gd2c.targets._gdnative.context import ClassContext, FunctionContext
-from gd2c.controlflow import ControlFlowGraph, build_control_flow_graph
+
+from gd2c import controlflow
 
 import gd2c.targets._gdnative.transform as transform
 import gd2c.targets._gdnative.class_codegen as class_codegen
 import gd2c.targets._gdnative.function_codegen as function_codegen
 
-
 class GDNativeTarget(Target):
-    pass
+    project: Project
+
+    def __init__(self, project: Project):
+        self.project = project
+
+    def transform(self) -> None:
+        for cls in self.project.classes():
+            for func in cls.functions():
+                func.cfg = controlflow.build_control_flow_graph(func)
+                func.cfg.live_variable_analysis()
+                
+                transform.insert_initializers_transformation(func)
+                #transform.replace_init_calls_with_noop_transformation(func)
+                transform.insert_destructors_transformation(func)
+
+    def emit(self, output_path: str) -> None:
+        gen = GDNativeCodeGen(self.project, output_path)
+        gen.transpile()
 
 class GDNativeCodeGen:
     def __init__(self, project: Project, output_path: Union[str, Path]):
@@ -33,26 +50,14 @@ class GDNativeCodeGen:
 
     def transpile(self):
         self._initialize_contexts()
-        self._apply_transformations()
-        #self._transpile_header_file()
-        #self._transpile_c_file()
+        self._transpile_header_file()
+        self._transpile_c_file()
 
     def _initialize_contexts(self):
-        def make_context(cls: GDScriptClass, depth: int):
-            print(f"make_context {depth} {cls.name}")
+        self.class_contexts = {}
+        for cls in self.project.iter_classes_in_dependency_order():
             context = ClassContext(cls, self.class_contexts.get(cls.base.type_id, None) if cls.base else None)
             self.class_contexts[cls.type_id] = context
-
-        self.class_contexts = {}
-        self.project.visit_classes_in_dependency_order(make_context)
-
-    def _apply_transformations(self):
-        for class_context in self.class_contexts.values():
-            for func_context in class_context.function_contexts.values():
-                func_context.func.cfg = build_control_flow_graph(func_context.func)
-
-        for transform in self.transforms:
-            transform(self)
 
     def _transpile_header_file(self):
         p = Path(self._output_path, "godotproject.h")
@@ -64,7 +69,7 @@ class GDNativeCodeGen:
                 #include "gd2c.h"
             """)
 
-            def iterate_data_declarations(cls: GDScriptClass, depth: int):
+            for cls in self.project.iter_classes_in_dependency_order():
                 class_context = self.class_contexts[cls.type_id]
                 class_codegen.transpile_struct(class_context, header)
                 class_codegen.transpile_constant_declarations(class_context, header)
@@ -72,14 +77,14 @@ class GDNativeCodeGen:
                 for func in cls.functions():
                     if func.len_constants:
                         func_context = class_context.get_function_context(func)
-                        header.write(f"""godot_variant {func_context.constants_array_identifier}[{func.len_constants}];\n""")
-                        header.write(f"""int {func_context.constants_initialized_identifier} = 0;\n""")
+                        header.write(f"""godot_variant {func_context.local_constants_array_identifier}[{func.len_constants}];\n""")
+                        header.write(f"""int {func_context.initialized_local_constants_array_identifier} = 0;\n""")
 
-            def iterate_property_signatures(cls: GDScriptClass, depth: int):
+            for cls in self.project.iter_classes_in_dependency_order():
                 class_context = self.class_contexts[cls.type_id]
                 class_codegen.transpile_property_signatures(class_context, header)             
 
-            def iterate_function_signatures(cls: GDScriptClass, depth: int):
+            for cls in self.project.iter_classes_in_dependency_order():
                 class_context = self.class_contexts[cls.type_id]
                 class_codegen.transpile_ctor_signature(class_context, header)
                 header.write(";\n")
@@ -87,10 +92,6 @@ class GDNativeCodeGen:
                 header.write(";\n")
                 for func_context in class_context.function_contexts.values():
                     function_codegen.transpile_signature(func_context, header)
-
-            self.project.visit_classes_in_dependency_order(iterate_data_declarations)
-            self.project.visit_classes_in_dependency_order(iterate_property_signatures)
-            self.project.visit_classes_in_dependency_order(iterate_function_signatures)
 
             header.write(f"""
                 #endif
@@ -104,7 +105,7 @@ class GDNativeCodeGen:
                 #include "godotproject.h"
             """)
 
-            def visitor(cls: GDScriptClass, depth: int):
+            for cls in self.project.iter_classes_in_dependency_order():
                 class_context = self.class_contexts[cls.type_id]
                 class_codegen.transpile_ctor(class_context, writer)                
                 class_codegen.transpile_dtor(class_context, writer)       
@@ -113,8 +114,6 @@ class GDNativeCodeGen:
                     function_codegen.transpile_function(func_context, writer)
                 
                 class_codegen.transpile_vtable(class_context, writer)
-
-            self.project.visit_classes_in_dependency_order(visitor)
 
             self._transpile_gdnative_init(writer)
             self._transpile_gdnative_terminate(writer)
@@ -173,10 +172,10 @@ class GDNativeCodeGen:
                 function_context = class_context.get_function_context(func.name)
                 assert function_context
                 if function_context.func.len_constants:
-                    impl.write(f"""if (0 != {function_context.constants_initialized_identifier}) {{\n""")
+                    impl.write(f"""if (0 != {function_context.initialized_local_constants_array_identifier}) {{\n""")
 
                     for i in range(function_context.func.len_constants):
-                        impl.write(f"""api10->godot_variant_destroy(&{function_context.constants_array_identifier}[{i}]);\n""")
+                        impl.write(f"""api10->godot_variant_destroy(&{function_context.local_constants_array_identifier}[{i}]);\n""")
 
                     impl.write(f"""}}\n""")
 
