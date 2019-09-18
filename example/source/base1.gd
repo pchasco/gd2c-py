@@ -47,3 +47,6 @@ func with_defargs(a, b = 1, c = 2):
 
 func godot_array_set(arr):
 	arr[0] = 0
+
+func godot_array_get(arr):
+	return arr[0]

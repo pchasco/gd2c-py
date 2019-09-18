@@ -267,23 +267,25 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
 
     def opcode_set(op):
         nonlocal FC
-        # This uses a temp variable to hold the int index
-        # a more specialized version of this instruction might use a native int rather than needing to unbox
+        # This uses a temp variable to hold the int index and the godot_array
+        # a more specialized version of this instruction might use a strongly-typed value prepared in advance by a box instruction
         file.write(f"""\
             {{
                 godot_int index = api10->godot_variant_as_int({FC.variables[op.index_address].address_of()});
-                api10->godot_array_set({FC.variables[op.dest].address_of()}, {op.index}, {FC.variables[op.source].address_of()});
+                godot_array arr = api10->godot_variant_as_array({FC.variables[op.array_address].address_of()});
+                api10->godot_array_set(&arr, index, {FC.variables[op.source_address].address_of()});
             }}
             """)
 
     def opcode_get(op):
         nonlocal FC
         # This uses a temp variable to hold the int index
-        # a more specialized version of this instruction might use a native int rather than needing to unbox
+        # a more specialized version of this instruction might use a strongly-typed value prepared in advance by a box instruction
         file.write(f"""\
             {{
                 godot_int index = api10->godot_variant_as_int({FC.variables[op.index_address].address_of()});
-                {FC.variables[op.dest].value()} = api10->godot_array_get({FC.variables[op.array_address].address_of()}, index);
+                godot_array arr = api10->godot_variant_as_array({FC.variables[op.array_address].address_of()});
+                {FC.variables[op.dest].value()} = api10->godot_array_get(&arr, index);
             }}
             """)
 

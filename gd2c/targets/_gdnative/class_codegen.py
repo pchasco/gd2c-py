@@ -31,9 +31,10 @@ def transpile_struct(class_context: ClassContext, writer: IO):
     writer.write(f"""int {class_context.constants_initialized_identifier} = 0;\n""")
 
 def transpile_constant_declarations(class_context: ClassContext, writer: IO):
-    writer.write(f"""
-        godot_variant {class_context.constants_array_identifier}[{class_context.cls.len_constants}];
-    """)
+    if class_context.cls.len_constants > 0:
+        writer.write(f"""
+            godot_variant {class_context.constants_array_identifier}[{class_context.cls.len_constants}];
+        """)
 
 def transpile_vtable(class_context: ClassContext, writer: IO):
     writer.write(f"""

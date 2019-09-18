@@ -45,7 +45,7 @@ class Variable:
             if self.address.offset < self.func_context.func.len_parameters:
                 return f"*p_args[{self.address.offset}]"
             else:
-                return f"stack[{self.address.offset - self.func_context.func.len_parameters}]"
+                return self.identifier
         elif self.address.mode == ADDRESS_MODE_GLOBAL:
             pass
         elif self.address.mode == ADDRESS_MODE_NAMEDGLOBAL:
