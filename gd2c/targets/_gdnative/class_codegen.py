@@ -9,7 +9,7 @@ def transpile_struct(class_context: ClassContext, writer: IO):
     if class_context.base_context:
         base_struct_tag = class_context.base_context.struct_tag
 
-    writer.write(f"""
+    writer.write(f"""\
         method_wrapper_ptr_t {class_context.vtable_wrappers_identifier}[{len(class_context.vtable_entries)}];
         variant_method_ptr_t {class_context.vtable_methods_identifier}[{len(class_context.vtable_entries)}];
         godot_string {class_context.vtable_method_names_identifier}[{len(class_context.vtable_entries)}];
@@ -24,7 +24,7 @@ def transpile_struct(class_context: ClassContext, writer: IO):
         if not member_context.member.is_inherited:
             writer.write(f"""godot_variant {member_context.member_identifier};\n""")
 
-    writer.write(f"""
+    writer.write(f"""\
         }};
     """)      
     
@@ -32,37 +32,37 @@ def transpile_struct(class_context: ClassContext, writer: IO):
 
 def transpile_constant_declarations(class_context: ClassContext, writer: IO):
     if class_context.cls.len_constants > 0:
-        writer.write(f"""
+        writer.write(f"""\
             godot_variant {class_context.constants_array_identifier}[{class_context.cls.len_constants}];
         """)
 
 def transpile_vtable(class_context: ClassContext, writer: IO):
-    writer.write(f"""
+    writer.write(f"""\
         void {class_context.vtable_init_function_identifier}() {{
-            vtable_init(&{class_context.vtable_identifier}, 
-                        &{class_context.base_vtable_identifier}, 
-                        {class_context.cls.type_id}, 
-                        {len(class_context.vtable_entries)},
-                        (void *)0,
-                        {class_context.vtable_methods_identifier},
+            vtable_init(&{class_context.vtable_identifier}, \
+                        &{class_context.base_vtable_identifier}, \
+                        {class_context.cls.type_id}, \
+                        {len(class_context.vtable_entries)}, \
+                        (void *)0, \
+                        {class_context.vtable_methods_identifier}, \
                         {class_context.vtable_method_names_identifier});
     """)
 
     for i, entry in enumerate(class_context.vtable_entries):
-        writer.write(f"""
-            VTABLE_METHOD({class_context.vtable_identifier}, 
-                {i},
-                "{entry.func_context.func.name}",
-                {entry.func_context.function_identifier},
+        writer.write(f"""\
+            VTABLE_METHOD({class_context.vtable_identifier}, \
+                {i}, \
+                "{entry.func_context.func.name}", \
+                {entry.func_context.function_identifier}, \
                 (void*)0);
         """)
 
-    writer.write("""
+    writer.write("""\
         }
     """)
 
 def transpile_ctor_signature(class_context: ClassContext, writer: IO):
-    writer.write(f"""
+    writer.write(f"""\
         void *{class_context.ctor_identifier}(godot_object *p_instance, void *p_method_data)
     """)
 
@@ -76,28 +76,23 @@ def transpile_ctor(class_context: ClassContext, writer: IO):
 
     function_context = class_context.get_function_context("_init")
     if function_context:
-        writer.write(f"""
-            {function_context.function_identifier}(
-                p_instance,
-                (void *)0,
-                user_data,
-                0,
-                (void*)0);
+        writer.write(f"""\
+            {function_context.function_identifier}(p_instance, (void *)0, user_data, 0, (void*)0);
         """)
 
-    writer.write(f"""
+    writer.write(f"""\
             return user_data;
         }}
     """)
 
 def transpile_dtor_signature(class_context: ClassContext, writer: IO):
-    writer.write(f"""
+    writer.write(f"""\
         void {class_context.dtor_identifier}(godot_object *p_instance, void *p_method_data, void *_p_user_data)
     """)
 
 def transpile_dtor(class_context: ClassContext, writer: IO):
     transpile_dtor_signature(class_context, writer)
-    writer.write(f"""
+    writer.write(f"""\
         {{
             struct {class_context.struct_tag} *p_user_data = (struct {class_context.struct_tag}*)_p_user_data;
             api10->godot_variant_destroy(&p_user_data->__self);
@@ -111,7 +106,7 @@ def transpile_property_implementations(class_context: ClassContext, writer: IO):
         if not member_context.member.name in own_members:
             continue
 
-        writer.write(f"""
+        writer.write(f"""\
             godot_variant {member_context.getter_identifier}(
                 godot_object *p_instance,
                 void *p_method_data,
@@ -140,7 +135,7 @@ def transpile_property_signatures(class_context: ClassContext, writer: IO):
         if not member_context.member.name in own_members:
             continue
 
-        writer.write(f"""
+        writer.write(f"""\
             godot_variant {member_context.getter_identifier}(
                 godot_object *p_instance,
                 void *p_method_data,

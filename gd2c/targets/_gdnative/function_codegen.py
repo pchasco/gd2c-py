@@ -9,11 +9,11 @@ if TYPE_CHECKING:
 
 def __transpile_signature(function_context: FunctionContext) -> str:
     return f"""\
-        godot_variant {function_context.function_identifier}(
-            godot_object* p_instance,
-            void* p_method_data,
-            void* _p_user_data,
-            int p_num_args,
+        godot_variant {function_context.function_identifier}( \
+            godot_object* p_instance, \
+            void* p_method_data, \
+            void* _p_user_data, \
+            int p_num_args, \
             godot_variant** p_args)"""
 
 def transpile_signature(function_context: FunctionContext, file: IO):
@@ -97,6 +97,9 @@ def __transpile_nodes(function_context: FunctionContext, file: IO):
 
 def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptOp, file: IO):
     FC = function_context
+    assert FC
+    assert FC.func
+    assert FC.func.cfg
 
     def opcode_jump(op: JumpGDScriptOp):
         nonlocal FC
@@ -245,8 +248,9 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
 
         file.write(f"""}}\n""")
 
-    def opcode_jumptodefaultargument(op):
+    def opcode_jumptodefaultargument(op: JumpToDefaultArgumentGDScriptOp):
         nonlocal FC
+        assert FC.func.cfg
         file.write(f"""\
             int defarg = {FC.func.len_parameters} - p_num_args;
             switch (defarg) {{
@@ -261,11 +265,11 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         }}
         """)
 
-    def opcode_end(op):
+    def opcode_end(op: EndGDScriptOp):
         nonlocal FC
-        file.write(f"goto {FC.func.cfg.exit_node.label};\n")
+        file.write(f"goto {FC.func.cfg.exit_node.label};\n") # type: ignore
 
-    def opcode_set(op):
+    def opcode_set(op: SetGDScriptOp):
         nonlocal FC
         # This uses a temp variable to hold the int index and the godot_array
         # a more specialized version of this instruction might use a strongly-typed value prepared in advance by a box instruction
@@ -277,7 +281,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             }}
             """)
 
-    def opcode_get(op):
+    def opcode_get(op: GetGDScriptOp):
         nonlocal FC
         # This uses a temp variable to hold the int index
         # a more specialized version of this instruction might use a strongly-typed value prepared in advance by a box instruction
@@ -289,30 +293,113 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             }}
             """)
 
+    def opcode_setnamed(op: SetNamedGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            gd2c->variant_get_named(\
+                {FC.variables[op.dest].address_of()}, \
+                &{FC.global_names_identifier}[{op.name_index}], \
+                {FC.variables[op.source].address_of()}, \
+                &__flag);
+            """)
+
+    def opcode_getnamed(op: GetNamedGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            gd2c->variant_get_named( \
+                {FC.variables[op.source].address_of()}, \
+                &{FC.global_names_identifier}[{op.name_index}]);
+            """)
+
+    def opcode_setmember(op: SetMemberGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            gd2c->object_set_property( \
+                p_instance, \
+                &{FC.global_names_identifier}[{op.name_index}], \
+                {FC.variables[op.source].address_of()}, \
+                &__flag);
+            """)
+
+    def opcode_getmember(op: GetMemberGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            gd2c->object_get_property(\
+                p_instance, \
+                &{FC.global_names_identifier}[{op.name_index}], \
+                {FC.variables[op.dest].address_of()});
+            """)
+
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
-    elif op.opcode == OPCODE_EXTENDSTEST:
-        file.write(f"""// OPCODE_EXTENDSTEST\n""")
-    elif op.opcode == OPCODE_ISBUILTIN:
-        file.write(f"""// OPCODE_ISBUILTIN\n""")
     elif op.opcode == OPCODE_SET:
-        opcode_set(op)
+        opcode_set(op) # type: ignore
     elif op.opcode == OPCODE_GET:
-        opcode_get(op)
+        opcode_get(op) # type: ignore
     elif op.opcode == OPCODE_SETNAMED:
-        file.write(f"""// OPCODE_SETNAMED\n""")
+        opcode_setnamed(op) # type: ignore
     elif op.opcode == OPCODE_GETNAMED:
-        file.write(f"""// OPCODE_GETNAMED\n""")
-    elif op.opcode == OPCODE_SETMEMBER:
-        file.write(f"""// OPCODE_SETMEMBER\n""")
-    elif op.opcode == OPCODE_GETMEMBER:
-        file.write(f"""// OPCODE_GETMEMBER\n""")
+        opcode_getnamed(op) # type: ignore
     elif op.opcode == OPCODE_ASSIGN:
         opcode_assign(op) # type: ignore
     elif op.opcode == OPCODE_ASSIGNTRUE:
         opcode_assigntrue(op) # type: ignore
     elif op.opcode == OPCODE_ASSIGNFALSE:
         opcode_assignfalse(op) # type: ignore
+    elif op.opcode == OPCODE_CALL:
+        opcode_call(op) # type: ignore
+    elif op.opcode == OPCODE_CALLRETURN:
+        opcode_call(op) # type: ignore
+    elif op.opcode == OPCODE_CALLSELFBASE:
+        opcode_call(op) # type: ignore
+    elif op.opcode == OPCODE_JUMP:
+        opcode_jump(op) # type: ignore
+    elif op.opcode == OPCODE_JUMPIF:
+        opcode_jumpif(op) # type: ignore
+    elif op.opcode == OPCODE_JUMPIFNOT:
+        opcode_jumpifnot(op) # type: ignore
+    elif op.opcode == OPCODE_JUMPTODEFAULTARGUMENT:
+        opcode_jumptodefaultargument(op) # type: ignore
+    elif op.opcode == OPCODE_RETURN:
+        opcode_return(op) # type: ignore
+    elif op.opcode == OPCODE_LINE:
+        opcode_line(op) # type: ignore
+    elif op.opcode == OPCODE_END:
+        opcode_end(op) # type: ignore
+    elif op.opcode == OPCODE_DESTROY:
+        opcode_destroy(op) # type: ignore
+    elif op.opcode == OPCODE_INITIALIZE:
+        opcode_initialize(op) # type: ignore
+    elif op.opcode == OPCODE_SETMEMBER:
+        opcode_setmember(op) # type: ignore
+    elif op.opcode == OPCODE_GETMEMBER:
+        opcode_getmember(op) # type: ignore
+
+    elif op.opcode == OPCODE_CALLBUILTIN:
+        file.write(f"""// OPCODE_CALLBUILTIN\n""")
+    elif op.opcode == OPCODE_CALLSELF:
+        file.write(f"""// OPCODE_CALLSELF\n""")
+    elif op.opcode == OPCODE_CONSTRUCT:
+        file.write(f"""// OPCODE_CONSTRUCT\n""")
+    elif op.opcode == OPCODE_CONSTRUCTARRAY:
+        file.write(f"""// OPCODE_CONSTRUCTARRAY\n""")
+    elif op.opcode == OPCODE_CONSTRUCTDICTIONARY:
+        file.write(f"""// OPCODE_CONSTRUCTDICTIONARY\n""")
+    elif op.opcode == OPCODE_ITERATEBEGIN:
+        file.write(f"""// OPCODE_ITERATEBEGIN\n""")
+    elif op.opcode == OPCODE_ITERATE:
+        file.write(f"""// OPCODE_ITERATE\n""")
+    elif op.opcode == OPCODE_YIELD:
+        file.write(f"""// OPCODE_YIELD\n""")
+    elif op.opcode == OPCODE_YIELDSIGNAL:
+        file.write(f"""// OPCODE_YIELDSIGNAL\n""")
+    elif op.opcode == OPCODE_YIELDRESUME:
+        file.write(f"""// OPCODE_YIELDRESUME\n""")
+
+    elif op.opcode == OPCODE_EXTENDSTEST:
+        file.write(f"""// OPCODE_EXTENDSTEST\n""")
+    elif op.opcode == OPCODE_ISBUILTIN:
+        file.write(f"""// OPCODE_ISBUILTIN\n""")
     elif op.opcode == OPCODE_ASSIGNTYPEDBUILTIN:
         file.write(f"""// OPCODE_ASSIGNTYPEDBUILTIN\n""")
     elif op.opcode == OPCODE_ASSIGNTYPEDNATIVE:
@@ -325,54 +412,10 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         file.write(f"""// OPCODE_CASTTONATIVE\n""")
     elif op.opcode == OPCODE_CASTTOSCRIPT:
         file.write(f"""// OPCODE_CASTTOSCRIPT\n""")
-    elif op.opcode == OPCODE_CONSTRUCT:
-        file.write(f"""// OPCODE_CONSTRUCT\n""")
-    elif op.opcode == OPCODE_CONSTRUCTARRAY:
-        file.write(f"""// OPCODE_CONSTRUCTARRAY\n""")
-    elif op.opcode == OPCODE_CONSTRUCTDICTIONARY:
-        file.write(f"""// OPCODE_CONSTRUCTDICTIONARY\n""")
-    elif op.opcode == OPCODE_CALL:
-        opcode_call(op) # type: ignore
-    elif op.opcode == OPCODE_CALLRETURN:
-        opcode_call(op) # type: ignore
-    elif op.opcode == OPCODE_CALLBUILTIN:
-        file.write(f"""// OPCODE_CALLBUILTIN\n""")
-    elif op.opcode == OPCODE_CALLSELF:
-        file.write(f"""// OPCODE_CALLSELF\n""")
-    elif op.opcode == OPCODE_CALLSELFBASE:
-        opcode_call(op) # type: ignore
-    elif op.opcode == OPCODE_YIELD:
-        file.write(f"""// OPCODE_YIELD\n""")
-    elif op.opcode == OPCODE_YIELDSIGNAL:
-        file.write(f"""// OPCODE_YIELDSIGNAL\n""")
-    elif op.opcode == OPCODE_YIELDRESUME:
-        file.write(f"""// OPCODE_YIELDRESUME\n""")
-    elif op.opcode == OPCODE_JUMP:
-        opcode_jump(op) # type: ignore
-    elif op.opcode == OPCODE_JUMPIF:
-        opcode_jumpif(op) # type: ignore
-    elif op.opcode == OPCODE_JUMPIFNOT:
-        opcode_jumpifnot(op) # type: ignore
-    elif op.opcode == OPCODE_JUMPTODEFAULTARGUMENT:
-        opcode_jumptodefaultargument(op)
-    elif op.opcode == OPCODE_RETURN:
-        opcode_return(op) # type: ignore
-    elif op.opcode == OPCODE_ITERATEBEGIN:
-        file.write(f"""// OPCODE_ITERATEBEGIN\n""")
-    elif op.opcode == OPCODE_ITERATE:
-        file.write(f"""// OPCODE_ITERATE\n""")
     elif op.opcode == OPCODE_ASSERT:
         file.write(f"""// OPCODE_ASSERT\n""")
     elif op.opcode == OPCODE_BREAKPOINT:
         file.write(f"""// OPCODE_BREAKPOINT\n""")
-    elif op.opcode == OPCODE_LINE:
-        opcode_line(op) # type: ignore
-    elif op.opcode == OPCODE_END:
-        opcode_end(op)
-    elif op.opcode == OPCODE_DESTROY:
-        opcode_destroy(op) # type: ignore
-    elif op.opcode == OPCODE_INITIALIZE:
-        opcode_initialize(op) # type: ignore
     else:
         file.write(f"// {str(op)};\n")
 

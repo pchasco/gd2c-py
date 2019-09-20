@@ -98,6 +98,7 @@ class FunctionContext:
     class_context: ClassContext
     variables: Dict[int, Variable]
     local_constants_array_identifier: str
+    global_names_identifier: str
 
     def __init__(self, func: GDScriptFunction, class_context: ClassContext):
         assert func
@@ -109,6 +110,7 @@ class FunctionContext:
         self.function_identifier =  f"{self.class_context.cls.name}_{self.func.name}_func"
         self.local_constants_array_identifier = f"{self.class_context.cls.name}_{self.func.name}_local_const"
         self.initialized_local_constants_array_identifier = f"{self.class_context.cls.name}_{self.func.name}_local_const_initialized"
+        self.global_names_identifier = f"{self.class_context.cls.name}_{self.func.name}_global_names"
         self.init_variables()
 
     def init_variables(self) -> None:

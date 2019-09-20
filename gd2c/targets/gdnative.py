@@ -23,7 +23,7 @@ class GDNativeTarget(Target):
             for func in cls.functions():
                 func.cfg = controlflow.build_control_flow_graph(func)
                 func.cfg.live_variable_analysis()
-                
+
                 transform.insert_initializers_transformation(func)
                 #transform.replace_init_calls_with_noop_transformation(func)
                 transform.insert_destructors_transformation(func)
@@ -62,7 +62,7 @@ class GDNativeCodeGen:
     def _transpile_header_file(self):
         p = Path(self._output_path, "godotproject.h")
         with p.open(mode="w") as header:
-            header.write(f"""
+            header.write(f"""\
                 #ifndef __GD2C_GODOTPROJECT__
                 #define __GD2C_GODOTPROJECT__            
             
@@ -93,14 +93,14 @@ class GDNativeCodeGen:
                 for func_context in class_context.function_contexts.values():
                     function_codegen.transpile_signature(func_context, header)
 
-            header.write(f"""
+            header.write(f"""\
                 #endif
             """)           
     
     def _transpile_c_file(self):
         p = Path(self._output_path, "godotproject.c")
         with p.open(mode="w") as writer:
-            writer.write(f"""
+            writer.write(f"""\
                 #include "gd2c.h"
                 #include "godotproject.h"
             """)
@@ -120,7 +120,7 @@ class GDNativeCodeGen:
             self._transpile_nativescript_registrations(writer)
 
     def _transpile_gdnative_init(self, impl: IO):
-        impl.write(f"""
+        impl.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_gdnative_init(godot_gdnative_init_options *p_options) {{
                 api10 = p_options->api_struct;
                 
@@ -151,12 +151,11 @@ class GDNativeCodeGen:
                 }}
 
                 api10->godot_variant_new_nil(&__nil);
-            }}
-        
+            }}        
         """)
 
     def _transpile_gdnative_terminate(self, impl: IO):
-        impl.write(f"""
+        impl.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_gdnative_terminate(godot_gdnative_terminate_options *p_options) {{
                 api10->godot_variant_destroy(&__nil);
         """)
@@ -182,13 +181,13 @@ class GDNativeCodeGen:
         impl.write(f"""}}\n""")
 
     def _transpile_nativescript_registrations(self, impl: IO):
-        impl.write(f"""
+        impl.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_nativescript_init(void *p_handle) {{
         """)
 
         def visitor(cls: GDScriptClass, depth: int):
             class_context = self.class_contexts[cls.type_id]
-            impl.write(f"""
+            impl.write(f"""\
                 {{
                     godot_instance_create_func create = {{ NULL, NULL, NULL }};
                     create.create_func = {class_context.ctor_identifier};
@@ -199,7 +198,7 @@ class GDNativeCodeGen:
             """)
 
             for entry in class_context.vtable_entries:
-                impl.write(f"""
+                impl.write(f"""\
                     {{
                         godot_instance_method method = {{ NULL, NULL, NULL }};
                         method.method = &{entry.func_context.function_identifier};
@@ -209,7 +208,7 @@ class GDNativeCodeGen:
                 """)
 
             for signal in cls.signals():
-                impl.write(f"""
+                impl.write(f"""\
                     {{
                         godot_string name = api10->godot_string_chars_to_utf8("{signal}");
                         godot_signal signal = {{
@@ -224,7 +223,7 @@ class GDNativeCodeGen:
                 """)
 
             for member_context in class_context.member_contexts.values():
-                impl.write(f"""
+                impl.write(f"""\
                     {{
                         godot_property_set_func setter = {{ NULL, NULL, NULL }};
                         setter.set_func = &{member_context.setter_identifier};
@@ -237,6 +236,6 @@ class GDNativeCodeGen:
 
         self.project.visit_classes_in_dependency_order(visitor)
 
-        impl.write(f"""
+        impl.write(f"""\
             }}
         """)
