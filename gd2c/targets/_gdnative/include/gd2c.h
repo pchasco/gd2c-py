@@ -78,60 +78,74 @@ struct class_base_t {
 
 godot_variant __nil;
 
-godot_object __gd2capi_object;
-godot_method_bind variant_get_named_mb;
-godot_method_bind variant_set_named_mb;
-godot_method_bind object_get_property_mb;
-godot_method_bind object_set_property_mb;
-godot_method_bind variant_set_mb;
-godot_method_bind variant_get_mb;
-godot_method_bind variant_decode_mb;
-godot_method_bind resource_load_mb;	
+struct gd2c_api_1_0 {
+	int major;
+	int minor;
+
+	void GDAPI (*test)(godot_variant *r_dest, godot_variant *p_in);
+};
+
+struct gd2c_api_1_0 *gd2c10;
 
 void initialize_gd2capi() {
-    godot_class_constructor ctor = api10->godot_get_class_constructor("GD2CApi")
-    __gd2capi_o = ctor();
+    // Get API bootstrapper
+    godot_class_constructor ctor = api10->godot_get_class_constructor("GD2CApi");
+    godot_object *o = ctor();
+    godot_variant v;
+    api10->godot_variant_new_object(&v, o);
 
-    variant_get_named_mb = api10->godot_get_method_bind("GD2CApi", "variant_get_named");
-    variant_set_named_mb = api10->godot_get_method_bind("GD2CApi", "variant_set_named")
-    variant_set_mb = api10->godot_get_method_bind("GD2CApi", "variant_set");
-    variant_get_mb = api10->godot_get_method_bind("GD2CApi", "variant_get");
-    variant_decode_mb = api10->godot_get_method_bind("GD2CApi", "variant_decode");
-    resource_load_mb = api10->godot_get_method_bind("GD2CApi", "resource_load");	    
+    // Get API handle
+	godot_variant major;
+    godot_variant minor;
+    api10->godot_variant_new_int(&major, 1);
+    api10->godot_variant_new_int(&minor, 0);
+    godot_variant *args[] = { &major, &minor };
+    godot_variant_call_error e;
+    godot_string name = api10->godot_string_chars_to_utf8("get_api");
+    godot_variant handle = api10->godot_variant_call(&v, &name, args, 2, &e);
+    api10->godot_string_destroy(&name);
+    api10->godot_variant_destroy(&v);
+    api10->godot_object_destroy(o);
+
+    // Parse API handle
+    godot_string splitter = api10->godot_string_chars_to_utf8(",");
+    godot_string str = api10->godot_variant_as_string(&handle);
+    godot_array parts = api10->godot_string_split(&str, &splitter);
+    godot_int size = api10->godot_array_size(&parts);
+    //assert size == 2;
+
+    // Extract ptr size check and ptr
+    godot_variant *vptrsize = api10->godot_array_operator_index(&parts, 0);
+    godot_string sptrsize = api10->godot_variant_as_string(vptrsize);
+    godot_variant *vptr = api10->godot_array_operator_index(&parts, 1);
+    godot_string sptr = api10->godot_variant_as_string(vptr);
+
+    int64_t ptrsize = api10->godot_string_to_int64(&sptrsize);
+    int64_t ptr = api10->godot_string_to_int64(&sptr);
+    //assert sizeof(void*) == ptrsize;
+
+    gd2c10 = (struct gd2c_api_1_0 *)ptr;
+
+    api10->godot_string_destroy(&sptrsize);
+    api10->godot_string_destroy(&sptr);
+    api10->godot_array_destroy(&parts);
+    api10->godot_string_destroy(&str);
+    api10->godot_string_destroy(&splitter);
 }
 
+/*
 void variant_get_named(godot_variant *p_self, const godot_string *p_name, godot_variant *p_dest, godot_bool *r_error);
 void variant_set_named(godot_variant *p_self, const godot_string *p_name, const godot_variant *p_value, godot_bool *r_error);
 void variant_set(godot_variant *p_instance, const godot_variant *p_index, const godot_variant *p_value, godot_bool *r_error);
 void variant_get(const godot_variant *p_instance, const godot_variant *p_index, godot_variant *p_dest, godot_bool *r_error);
 godot_error variant_decode(godot_variant *r_variant, const uint8_t *p_buffer, int p_len, int *r_len, godot_bool p_allow_objects);
 void resource_load(godot_variant *r_result, const godot_string *p_path);
-
-void variant_get_named(const godot_variant *p_self, const godot_string *p_name, godot_variant *p_dest, godot_bool *r_error) {
-    void *args[] = { p_self, p_name, p_dest, r_error };
-    api10->godot_method_bind_ptrcall(variant_get_named_mb, __gd2capi_object, args, (void *)0);
-}
-
-void variant_set_named(const godot_variant *p_self, const godot_string *p_name, godot_variant *p_dest, godot_bool *r_error) {
-    void *args[] = { p_self, p_dest, p_value, r_error };
-    api10->godot_method_bind_ptrcall(variant_set_named_mb, __gd2capi_object, args, (void *)0);
-}
-
-void variant_get(const godot_variant *p_self, const godot_variant *p_index, godot_variant *p_dest, godot_bool *r_error) {
-    void *args[] = { p_self, p_index, p_dest, r_error };
-    api10->godot_method_bind_ptrcall(variant_get_named_mb, __gd2capi_object, args, (void *)0);
-}
-
-void variant_set(const godot_variant *p_self, const godot_variant *p_index, godot_variant *p_value, godot_bool *r_error) {
-    void *args[] = { p_self, p_index, p_value, r_error };
-    api10->godot_method_bind_ptrcall(variant_set_named_mb, __gd2capi_object, args, (void *)0);
-}
-
 godot_error variant_decode(godot_variant *r_variant, const uint8_t *p_buffer, int p_len, int *r_len, godot_bool p_allow_objects) {
     void *args[] = { r_variant, p_buffer, &p_len, r_len, &p_allow_objects };
     godot_error err;
     api10->godot_method_bind_ptrcall(variant_decode_mb, __gd2capi_object, args, &err);
     return err;
 }
+*/
 
 #endif

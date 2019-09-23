@@ -45,7 +45,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
             file.write(f"""\
                 {{
                     uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
-                    gd2c->godot_variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, {const.vtype.value}, true);
+                    gd2c10->godot_variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, {const.vtype.value}, true);
                 }}
             """) 
 
@@ -296,7 +296,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
     def opcode_setnamed(op: SetNamedGDScriptOp):
         nonlocal FC
         file.write(f"""\
-            gd2c->variant_get_named(\
+            gd2c10->variant_get_named(\
                 {FC.variables[op.dest].address_of()}, \
                 &{FC.global_names_identifier}[{op.name_index}], \
                 {FC.variables[op.source].address_of()}, \
@@ -306,7 +306,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
     def opcode_getnamed(op: GetNamedGDScriptOp):
         nonlocal FC
         file.write(f"""\
-            gd2c->variant_get_named( \
+            gd2c10->variant_get_named( \
                 {FC.variables[op.source].address_of()}, \
                 &{FC.global_names_identifier}[{op.name_index}]);
             """)
@@ -314,7 +314,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
     def opcode_setmember(op: SetMemberGDScriptOp):
         nonlocal FC
         file.write(f"""\
-            gd2c->object_set_property( \
+            gd2c10->object_set_property( \
                 p_instance, \
                 &{FC.global_names_identifier}[{op.name_index}], \
                 {FC.variables[op.source].address_of()}, \
@@ -324,7 +324,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
     def opcode_getmember(op: GetMemberGDScriptOp):
         nonlocal FC
         file.write(f"""\
-            gd2c->object_get_property(\
+            gd2c10->object_get_property(\
                 p_instance, \
                 &{FC.global_names_identifier}[{op.name_index}], \
                 {FC.variables[op.dest].address_of()});
