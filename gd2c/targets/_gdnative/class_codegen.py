@@ -148,4 +148,4 @@ def transpile_property_signatures(class_context: ClassContext, writer: IO):
                 void *_p_user_data,
                 godot_variant *p_value
             );
-        """)        
+        """)         

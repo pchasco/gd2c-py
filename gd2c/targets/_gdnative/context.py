@@ -36,7 +36,7 @@ class Variable:
         elif self.address.mode == ADDRESS_MODE_CLASS:
             pass
         elif self.address.mode == ADDRESS_MODE_MEMBER:
-            pass
+            return f"p_user_data->{self.class_context.get_member_context(self.address.offset).member_identifier}"
         elif self.address.mode == ADDRESS_MODE_CLASSCONSTANT:
             pass
         elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT:
@@ -67,7 +67,7 @@ class Variable:
         elif self.address.mode == ADDRESS_MODE_CLASS:
             pass
         elif self.address.mode == ADDRESS_MODE_MEMBER:
-            pass
+            return f"&p_user_data->{self.class_context.get_member_context(self.address.offset).member_identifier}"
         elif self.address.mode == ADDRESS_MODE_CLASSCONSTANT:
             pass
         elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT:

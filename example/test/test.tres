@@ -3,4 +3,6 @@
 [resource]
 symbol_prefix = "GD2C_"
 entry/OSX.64 = "res://libgodotproject.dylib"
+entry/Windows.64 = "res://godotproject.dll"
 dependency/OSX.64 = [  ]
+dependency/Windows.64 = [  ]

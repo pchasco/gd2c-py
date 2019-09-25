@@ -56,3 +56,6 @@ func godot_set_named():
 
 func godot_get_named():
 	return member1
+
+func godot_construct_array():
+	var arr = [0, 1, 2]

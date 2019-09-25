@@ -26,7 +26,6 @@ def strip_debug(func: GDScriptFunction) -> bool:
                 made_changes = True
 
         for op in remove:
-            print(f"Removing from {block.label} {op}")
             block.remove_op(op)
 
     func.cfg.visit_nodes(visitor)

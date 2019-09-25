@@ -342,17 +342,19 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             {{
             godot_array arr;
             api10->godot_array_new(&arr);
-            api10->godot_array_resize({FC.variables[op.dest].address_of()}, {op.item_count});
+            api10->godot_array_resize(&arr, {op.item_count});
         """)
 
         for i, addr in enumerate(op.item_addresses):
             file.write(f"""\
-                api10->godot_array_set({FC.variables[op.dest].address_of()}, {i}, {FC.variables[addr].address_of()});
+                api10->godot_array_set(&arr, {i}, {FC.variables[addr].address_of()});
             """)
 
         file.write(f"""\
             api10->godot_variant_new_array({FC.variables[op.dest].address_of()}, &arr);
         }}\n""")
+
+    file.write(f"""printf("C LINE %i", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
