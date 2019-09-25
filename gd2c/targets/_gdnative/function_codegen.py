@@ -45,7 +45,8 @@ def transpile_function(function_context: FunctionContext, file: IO):
             file.write(f"""\
                 {{
                     uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
-                    gd2c10->godot_variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, {const.vtype.value}, true);
+                    int bytesRead;
+                    gd2c10->variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, &bytesRead, true);
                 }}
             """) 
 
@@ -191,12 +192,9 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
     def opcode_call(op: Union[CallGDScriptOp, CallReturnGDScriptOp, CallSelfBaseGDScriptOp]):
         nonlocal FC
         call_base = isinstance(op, CallSelfBaseGDScriptOp)
-        call_return = isinstance(op, (CallReturnGDScriptOp, CallSelfBaseGDScriptOp)) and op.dest is not None
 
         # use local scope for args[]
-        file.write(f"""\
-            {{
-        """)           
+        file.write("{\n")
 
         # args array if necessary, otherwise just use a null ptr
         if op.arg_count > 0:
@@ -225,8 +223,8 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
 
         # if method is in vtable we can call with function pointer,
         # otherwise we will have to call with godot_variant_call
-        if call_return:
-            file.write(f"{FC.variables[op.dest].value()} = ") # type: ignore
+        if isinstance(op, CallReturnGDScriptOp):
+            file.write(f"godot_variant call_result = ") # type: ignore
 
         if vtable_entry:                
             base_chain = "base->" if call_base else ""
@@ -246,7 +244,13 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
                     f"{op.arg_count}, " \
                     f"&__error);\n")
 
-        file.write(f"""}}\n""")
+        if isinstance(op, CallReturnGDScriptOp):
+            file.write(f"""\
+                api10->godot_variant_new_copy({FC.variables[op.dest].address_of()}, &call_result);            
+                api10->godot_variant_destroy(&call_result);
+            """)
+
+        file.write("}\n")
 
     def opcode_jumptodefaultargument(op: JumpToDefaultArgumentGDScriptOp):
         nonlocal FC
@@ -308,7 +312,9 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         file.write(f"""\
             gd2c10->variant_get_named( \
                 {FC.variables[op.source].address_of()}, \
-                &{FC.global_names_identifier}[{op.name_index}]);
+                &{FC.global_names_identifier}[{op.name_index}],\
+                {FC.variables[op.dest].address_of()},
+                &__flag);
             """)
 
     def opcode_setmember(op: SetMemberGDScriptOp):
@@ -329,6 +335,24 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
                 &{FC.global_names_identifier}[{op.name_index}], \
                 {FC.variables[op.dest].address_of()});
             """)
+
+    def opcode_constructarray(op: ConstructArrayGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            {{
+            godot_array arr;
+            api10->godot_array_new(&arr);
+            api10->godot_array_resize({FC.variables[op.dest].address_of()}, {op.item_count});
+        """)
+
+        for i, addr in enumerate(op.item_addresses):
+            file.write(f"""\
+                api10->godot_array_set({FC.variables[op.dest].address_of()}, {i}, {FC.variables[addr].address_of()});
+            """)
+
+        file.write(f"""\
+            api10->godot_variant_new_array({FC.variables[op.dest].address_of()}, &arr);
+        }}\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
@@ -374,17 +398,17 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         opcode_setmember(op) # type: ignore
     elif op.opcode == OPCODE_GETMEMBER:
         opcode_getmember(op) # type: ignore
-
-    elif op.opcode == OPCODE_CALLBUILTIN:
-        file.write(f"""// OPCODE_CALLBUILTIN\n""")
+    elif op.opcode == OPCODE_CONSTRUCTARRAY:
+        opcode_constructarray(op) # type: ignore
     elif op.opcode == OPCODE_CALLSELF:
-        file.write(f"""// OPCODE_CALLSELF\n""")
+        pass
+
     elif op.opcode == OPCODE_CONSTRUCT:
         file.write(f"""// OPCODE_CONSTRUCT\n""")
-    elif op.opcode == OPCODE_CONSTRUCTARRAY:
-        file.write(f"""// OPCODE_CONSTRUCTARRAY\n""")
     elif op.opcode == OPCODE_CONSTRUCTDICTIONARY:
         file.write(f"""// OPCODE_CONSTRUCTDICTIONARY\n""")
+    elif op.opcode == OPCODE_CALLBUILTIN:
+        file.write(f"""// OPCODE_CALLBUILTIN\n""")
     elif op.opcode == OPCODE_ITERATEBEGIN:
         file.write(f"""// OPCODE_ITERATEBEGIN\n""")
     elif op.opcode == OPCODE_ITERATE:

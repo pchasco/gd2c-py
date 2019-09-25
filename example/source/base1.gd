@@ -3,8 +3,8 @@ extends Node2D
 # signal signal1
 # signal signal2
 
-# var member1: int = 0
-# var member2 = "string"
+var member1: int = 0
+var member2 = "string"
 
 # const const1: int = 0
 # const const2 = "string"
@@ -22,17 +22,17 @@ extends Node2D
 # 	a = a * 5
 # 	return a
 
-# func call_method(b):
-# 	called_method(1, b)
+func call_method(b):
+    called_method(1, b)
 
-# func called_method(a, b):
-# 	b = 1
-# 	return a * b
+func called_method(a, b):
+ 	b = 1
+ 	return a * b
 
-# func natural_loop():
-# 	var a = 0
-# 	while a < 10:
-# 		a += 1
+func natural_loop():
+ 	var a = 0
+ 	while a < 10:
+ 		a += 1
 
 func nested_loop():
 	var b = 0
@@ -50,3 +50,9 @@ func godot_array_set(arr):
 
 func godot_array_get(arr):
 	return arr[0]
+
+func godot_set_named():
+	member1 = 0
+
+func godot_get_named():
+	return member1

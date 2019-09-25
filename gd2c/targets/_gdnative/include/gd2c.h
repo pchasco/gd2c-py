@@ -5,6 +5,7 @@
 #include <gdnative_api_struct.gen.h>
 
 #include "stdio.h"
+#include "gd2c_api_struct.h"
 
 const godot_gdnative_core_api_struct *api10 = (void *)0;
 const godot_gdnative_core_1_1_api_struct *api11 = (void *)0;
@@ -80,103 +81,52 @@ struct class_base_t {
 
 godot_variant __nil;
 
-struct gd2c_api_1_0 {
-	int major;
-	int minor;
-
-	void GDAPI (*test)(godot_variant *r_dest, godot_variant *p_in);
-};
-
 struct gd2c_api_1_0 *gd2c10;
 
 void initialize_gd2capi() {
-    printf("initalize_gd2capi\n");
     // Get API bootstrapper
-    printf("%i\n", __LINE__);
     godot_class_constructor ctor = api10->godot_get_class_constructor("GD2CApi");
-    printf("%i\n", __LINE__);
     godot_object *o = ctor();
     godot_variant v;
-    printf("%i\n", __LINE__);
     api10->godot_variant_new_object(&v, o);
 
     // Get API handle
 	godot_variant major;
     godot_variant minor;
-    printf("%i\n", __LINE__);
     api10->godot_variant_new_int(&major, 1);
-    printf("%i\n", __LINE__);
     api10->godot_variant_new_int(&minor, 0);
     godot_variant *args[] = { &major, &minor };
     godot_variant_call_error e;
-    printf("%i\n", __LINE__);
     godot_string name = api10->godot_string_chars_to_utf8("get_api");
-    printf("%i\n", __LINE__);
-    api10->godot_print(&name);
-    printf("%i\n", __LINE__);
     godot_variant handle = api10->godot_variant_call(&v, &name, (const godot_variant **)args, 2, &e);
-    printf("%i\n", __LINE__);
     api10->godot_string_destroy(&name);
-    printf("%i\n", __LINE__);
     api10->godot_variant_destroy(&v);
-    printf("%i\n", __LINE__);
     //api10->godot_object_destroy(o);
 
     // Parse API handle
-    printf("%i\n", __LINE__);
     godot_string splitter = api10->godot_string_chars_to_utf8(",");
-    printf("%i\n", __LINE__);
-    godot_string str = api10->godot_variant_as_string(&handle);    printf("%i\n", __LINE__);
-    api10->godot_print(&str);
-    printf("%i\n", __LINE__);
+    godot_string str = api10->godot_variant_as_string(&handle);
     godot_array parts = api10->godot_string_split(&str, &splitter);
-    printf("%i\n", __LINE__);
     godot_int size = api10->godot_array_size(&parts);
     //assert size == 2;
 
     // Extract ptr size check and ptr
-    printf("%i\n", __LINE__);
     godot_variant *vptrsize = api10->godot_array_operator_index(&parts, 0);
-    printf("%i\n", __LINE__);
     godot_string sptrsize = api10->godot_variant_as_string(vptrsize);
-    printf("%i\n", __LINE__);
     godot_variant *vptr = api10->godot_array_operator_index(&parts, 1);
-    printf("%i\n", __LINE__);
     godot_string sptr = api10->godot_variant_as_string(vptr);
 
-    printf("%i\n", __LINE__);
     int64_t ptrsize = api10->godot_string_to_int64(&sptrsize);
-    printf("%i\n", __LINE__);
     int64_t ptr = api10->godot_string_to_int64(&sptr);
     //assert sizeof(void*) == ptrsize;
 
     gd2c10 = (struct gd2c_api_1_0 *)ptr;
 
-    printf("%i\n", __LINE__);
     api10->godot_string_destroy(&sptrsize);
-    printf("%i\n", __LINE__);
     api10->godot_string_destroy(&sptr);
-    printf("%i\n", __LINE__);
     api10->godot_array_destroy(&parts);
-    printf("%i\n", __LINE__);
     api10->godot_string_destroy(&str);
-    printf("%i\n", __LINE__);
     api10->godot_string_destroy(&splitter);
 }
-
-/*
-void variant_get_named(godot_variant *p_self, const godot_string *p_name, godot_variant *p_dest, godot_bool *r_error);
-void variant_set_named(godot_variant *p_self, const godot_string *p_name, const godot_variant *p_value, godot_bool *r_error);
-void variant_set(godot_variant *p_instance, const godot_variant *p_index, const godot_variant *p_value, godot_bool *r_error);
-void variant_get(const godot_variant *p_instance, const godot_variant *p_index, godot_variant *p_dest, godot_bool *r_error);
-godot_error variant_decode(godot_variant *r_variant, const uint8_t *p_buffer, int p_len, int *r_len, godot_bool p_allow_objects);
-void resource_load(godot_variant *r_result, const godot_string *p_path);
-godot_error variant_decode(godot_variant *r_variant, const uint8_t *p_buffer, int p_len, int *r_len, godot_bool p_allow_objects) {
-    void *args[] = { r_variant, p_buffer, &p_len, r_len, &p_allow_objects };
-    godot_error err;
-    api10->godot_method_bind_ptrcall(variant_decode_mb, __gd2capi_object, args, &err);
-    return err;
-}
-*/
 
 #endif

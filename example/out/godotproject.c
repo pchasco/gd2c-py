@@ -1,17 +1,15 @@
 #include "gd2c.h"
 #include "godotproject.h"
 
-#include "stdio.h"
 
-void print(const char *str) {
-    godot_string gs = api10->godot_string_chars_to_utf8(str);
-    api10->godot_print(&gs);
-    api10->godot_string_destroy(&gs);
+void print(godot_variant *v) {
+    godot_string s = api10->godot_variant_as_string(v);
+    api10->godot_print(&s);
+    api10->godot_string_destroy(&s);
 }
 
 void *Class_1_ctor(godot_object *p_instance, void *p_method_data)
 {
-    printf("ctor\n");
     struct Class_1_struct_t *user_data = api10->godot_alloc(sizeof(struct Class_1_struct_t));
     user_data->__vtable = &Class_1_vtable;
     api10->godot_variant_new_object(&user_data->__self, p_instance);
@@ -20,56 +18,262 @@ void *Class_1_ctor(godot_object *p_instance, void *p_method_data)
 }
 void Class_1_dtor(godot_object *p_instance, void *p_method_data, void *_p_user_data)
 {
-    printf("dtor\n");
     struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
     api10->godot_variant_destroy(&p_user_data->__self);
     api10->godot_free(p_user_data);
 }
 godot_variant Class_1__init_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
 {
-    printf("_init\n");
-    printf("%i\n", __LINE__);
     struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
     godot_bool __flag;
     godot_variant_call_error __error;
     godot_variant __return_value;
-    printf("%i\n", __LINE__);
     api10->godot_variant_new_nil(&__return_value);
-    
-    godot_variant v1;
-    godot_variant v2;
-
-    printf("%i\n", __LINE__);
-    api10->godot_variant_new_int(&v1, 1);
-    printf("%i\n", __LINE__);
-    gd2c10->test(&v1, &v2);
-
-    printf("%i\n", __LINE__);
-    godot_string s = api10->godot_variant_as_string(&v2);
-
-    printf("%i\n", __LINE__);
-    api10->godot_print(&s);
-    printf("%i\n", __LINE__);
-    api10->godot_string_destroy(&s);
-    printf("%i\n", __LINE__);
-    api10->godot_variant_destroy(&v2);
-    printf("%i\n", __LINE__);
-    api10->godot_variant_destroy(&v1);
-
-    printf("%i\n", __LINE__);
+    goto _entry;
+_entry:
+print(&__return_value);
+    goto _0;
+_0:
+    goto _2;
+_2:
+    goto _exit;
+_exit:
+    goto _cleanup;
+_cleanup:
     return __return_value;
 }
-
-
+godot_variant Class_1_godot_array_get_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+{
+    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
+    godot_bool __flag;
+    godot_variant_call_error __error;
+    godot_variant __return_value;
+    api10->godot_variant_new_nil(&__return_value);
+    if (0 == Class_1_godot_array_get_local_const_initialized)
+    {
+        {
+            uint8_t data[] = {2, 0, 0, 0, 0, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_godot_array_get_local_const[0], data, 8, &bytesRead, true);
+        }
+        Class_1_godot_array_get_local_const_initialized = 1;
+    }
+    godot_variant st_83886081;
+    goto _entry;
+_entry:
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x1087abba8>;
+    // DEFINE 67108864;
+    api10->godot_variant_new_nil(&st_83886081);
+    goto _0;
+_0:
+    goto _2;
+_2:
+{
+    godot_int index = api10->godot_variant_as_int(&Class_1_godot_array_get_local_const[0]);
+    godot_array arr = api10->godot_variant_as_array(p_args[0]);
+    st_83886081 = api10->godot_array_get(&arr, index);
+}
+    api10->godot_variant_new_copy(&__return_value, &st_83886081);
+    goto _exit;
+_exit:
+    api10->godot_variant_destroy(&st_83886081);
+    goto _cleanup;
+_cleanup:
+    return __return_value;
+}
+godot_variant Class_1_nested_loop_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+{
+    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
+    godot_bool __flag;
+    godot_variant_call_error __error;
+    godot_variant __return_value;
+    api10->godot_variant_new_nil(&__return_value);
+    if (0 == Class_1_nested_loop_local_const_initialized)
+    {
+        {
+            uint8_t data[] = {2, 0, 0, 0, 0, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_nested_loop_local_const[0], data, 8, &bytesRead, true);
+        }
+        {
+            uint8_t data[] = {2, 0, 0, 0, 10, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_nested_loop_local_const[1], data, 8, &bytesRead, true);
+        }
+        {
+            uint8_t data[] = {2, 0, 0, 0, 1, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_nested_loop_local_const[2], data, 8, &bytesRead, true);
+        }
+        Class_1_nested_loop_local_const_initialized = 1;
+    }
+    godot_variant st_100663296;
+    godot_variant st_83886081;
+    godot_variant st_100663297;
+    godot_variant st_83886082;
+    godot_variant st_83886083;
+    goto _entry;
+_entry:
+    // DEFINE 67108864;
+    // DEFINE 67108865;
+    // DEFINE 67108866;
+    api10->godot_variant_new_nil(&st_100663296);
+    api10->godot_variant_new_nil(&st_83886081);
+    api10->godot_variant_new_nil(&st_100663297);
+    api10->godot_variant_new_nil(&st_83886082);
+    api10->godot_variant_new_nil(&st_83886083);
+    goto _0;
+_0:
+    goto _2;
+_2:
+    api10->godot_variant_new_copy(&st_100663296, &Class_1_nested_loop_local_const[0]);
+    goto _7;
+_7:
+    api11->godot_variant_evaluate(2, &st_100663296, &Class_1_nested_loop_local_const[1], &st_83886081, &__flag);
+    __flag = api10->godot_variant_as_bool(&st_83886081);
+    if (__flag)
+        goto _18;
+    goto _15;
+_15:
+    goto _17;
+_17:
+    goto _exit;
+_exit:
+    api10->godot_variant_destroy(&st_100663296);
+    api10->godot_variant_destroy(&st_83886081);
+    api10->godot_variant_destroy(&st_100663297);
+    api10->godot_variant_destroy(&st_83886082);
+    api10->godot_variant_destroy(&st_83886083);
+    goto _cleanup;
+_18:
+    api10->godot_variant_new_copy(&st_100663297, &Class_1_nested_loop_local_const[0]);
+    goto _23;
+_23:
+    api11->godot_variant_evaluate(2, &st_100663297, &Class_1_nested_loop_local_const[1], &st_83886082, &__flag);
+    __flag = api10->godot_variant_as_bool(&st_83886082);
+    if (__flag)
+        goto _31;
+    goto _41;
+_41:
+    goto _43;
+_43:
+    api11->godot_variant_evaluate(6, &st_100663296, &Class_1_nested_loop_local_const[2], &st_83886083, &__flag);
+    api10->godot_variant_new_copy(&st_100663296, &st_83886083);
+    goto _7;
+_31:
+    api11->godot_variant_evaluate(6, &st_100663297, &Class_1_nested_loop_local_const[2], &st_83886083, &__flag);
+    api10->godot_variant_new_copy(&st_100663297, &st_83886083);
+    goto _23;
+_cleanup:
+    return __return_value;
+}
+godot_variant Class_1_with_defargs_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+{
+    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
+    godot_bool __flag;
+    godot_variant_call_error __error;
+    godot_variant __return_value;
+    api10->godot_variant_new_nil(&__return_value);
+    if (0 == Class_1_with_defargs_local_const_initialized)
+    {
+        {
+            uint8_t data[] = {2, 0, 0, 0, 1, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_with_defargs_local_const[0], data, 8, &bytesRead, true);
+        }
+        {
+            uint8_t data[] = {2, 0, 0, 0, 2, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_with_defargs_local_const[1], data, 8, &bytesRead, true);
+        }
+        Class_1_with_defargs_local_const_initialized = 1;
+    }
+    godot_variant st_83886083;
+    goto _entry;
+_entry:
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x108715860>;
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x108715ac8>;
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x108715b00>;
+    // DEFINE 67108864;
+    // DEFINE 67108865;
+    api10->godot_variant_new_nil(&st_83886083);
+    goto _0;
+_0:
+    goto _2;
+_2:
+    int defarg = 3 - p_num_args;
+    switch (defarg)
+    {
+    case 0:
+        goto _13;
+    case 1:
+        goto _8;
+    default:
+        goto _3;
+    }
+_3:
+    api10->godot_variant_new_copy(p_args[1], &Class_1_with_defargs_local_const[0]);
+    goto _8;
+_8:
+    api10->godot_variant_new_copy(p_args[2], &Class_1_with_defargs_local_const[1]);
+    goto _13;
+_13:
+    api11->godot_variant_evaluate(6, p_args[0], p_args[1], &st_83886083, &__flag);
+    api11->godot_variant_evaluate(6, &st_83886083, p_args[2], &st_83886083, &__flag);
+    api10->godot_variant_new_copy(&__return_value, &st_83886083);
+    goto _exit;
+_exit:
+    api10->godot_variant_destroy(&st_83886083);
+    goto _cleanup;
+_cleanup:
+    return __return_value;
+}
+godot_variant Class_1_godot_array_set_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+{
+    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
+    godot_bool __flag;
+    godot_variant_call_error __error;
+    godot_variant __return_value;
+    api10->godot_variant_new_nil(&__return_value);
+    if (0 == Class_1_godot_array_set_local_const_initialized)
+    {
+        {
+            uint8_t data[] = {2, 0, 0, 0, 0, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_godot_array_set_local_const[0], data, 8, &bytesRead, true);
+        }
+        Class_1_godot_array_set_local_const_initialized = 1;
+    }
+    goto _entry;
+_entry:
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x10871f128>;
+    // DEFINE 67108864;
+    goto _0;
+_0:
+    goto _2;
+_2:
+{
+    godot_int index = api10->godot_variant_as_int(&Class_1_godot_array_set_local_const[0]);
+    godot_array arr = api10->godot_variant_as_array(p_args[0]);
+    api10->godot_array_set(&arr, index, &Class_1_godot_array_set_local_const[0]);
+}
+    goto _exit;
+_exit:
+    goto _cleanup;
+_cleanup:
+    return __return_value;
+}
 void Class_1_vtable_init()
 {
-    vtable_init(&Class_1_vtable, &vtable, 2, 1, (void *)0, Class_1_vtable_methods, Class_1_vtable_method_names);
+    vtable_init(&Class_1_vtable, &vtable, 2, 5, (void *)0, Class_1_vtable_methods, Class_1_vtable_method_names);
     VTABLE_METHOD(Class_1_vtable, 0, "_init", Class_1__init_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 1, "godot_array_get", Class_1_godot_array_get_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 2, "nested_loop", Class_1_nested_loop_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 3, "with_defargs", Class_1_with_defargs_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 4, "godot_array_set", Class_1_godot_array_set_func, (void *)0);
 }
 void GDN_EXPORT GD2C_gdnative_init(godot_gdnative_init_options *p_options)
 {
-    printf("GD2C_gdnative_init\n");
-
     api10 = p_options->api_struct;
 
     const godot_gdnative_api_struct *extension = api10->next;
@@ -77,10 +281,7 @@ void GDN_EXPORT GD2C_gdnative_init(godot_gdnative_init_options *p_options)
     {
         if (extension->version.major == 1 && extension->version.minor == 1)
         {
-            printf("Found api11\n");
             api11 = (const godot_gdnative_core_1_1_api_struct *)extension;
-
-            break;
         }
         extension = extension->next;
     }
@@ -93,13 +294,11 @@ void GDN_EXPORT GD2C_gdnative_init(godot_gdnative_init_options *p_options)
         {
             extension = api10->extensions[i];
             nativescript10 = (godot_gdnative_ext_nativescript_api_struct *)extension;
-            printf("Found nativescript10\n");
             while (extension)
             {
                 if (extension->version.major == 1 && extension->version.minor == 1)
                 {
                     nativescript11 = (const godot_gdnative_ext_nativescript_1_1_api_struct *)extension;
-                    printf("Found nativescript11\n");
                 }
                 extension = extension->next;
             }
@@ -111,7 +310,6 @@ void GDN_EXPORT GD2C_gdnative_init(godot_gdnative_init_options *p_options)
         }
     }
 
-    print("api found");
     api10->godot_variant_new_nil(&__nil);
 }
 void GDN_EXPORT GD2C_gdnative_terminate(godot_gdnative_terminate_options *p_options)
@@ -152,6 +350,28 @@ void GDN_EXPORT GD2C_nativescript_init(void *p_handle)
         godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
         nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "_init", attributes, method);
     }
-
-    initialize_gd2capi();
+    {
+        godot_instance_method method = {NULL, NULL, NULL};
+        method.method = &Class_1_godot_array_get_func;
+        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "godot_array_get", attributes, method);
+    }
+    {
+        godot_instance_method method = {NULL, NULL, NULL};
+        method.method = &Class_1_nested_loop_func;
+        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "nested_loop", attributes, method);
+    }
+    {
+        godot_instance_method method = {NULL, NULL, NULL};
+        method.method = &Class_1_with_defargs_func;
+        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "with_defargs", attributes, method);
+    }
+    {
+        godot_instance_method method = {NULL, NULL, NULL};
+        method.method = &Class_1_godot_array_set_func;
+        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "godot_array_set", attributes, method);
+    }
 }
