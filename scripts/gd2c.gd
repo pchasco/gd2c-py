@@ -22,7 +22,7 @@ func dump_directory(source_dir, dest_dir):
             if dir.current_is_dir():
                 dump_directory(sd + name, dd + name)
             else:
-                if name.ends_with(".gd"):
+                if name.ends_with(".gd") and name != "gd2c.gd":
                     print(sd + name + " to " + dd + name)
                     exporter.export_bytecode_to_file(sd + name, dd + name + ".json")
 

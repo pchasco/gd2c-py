@@ -28,6 +28,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
     file.write(__transpile_signature(function_context))
     file.write(f"""\
         {{   
+            printf("Enter: {function_context.function_identifier}\\n");
             struct {function_context.class_context.struct_tag} *p_user_data = (struct {function_context.class_context.struct_tag}*)_p_user_data;
             godot_bool __flag;   
             godot_variant_call_error __error;
@@ -46,6 +47,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
                 {{
                     uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
                     int bytesRead;
+                    printf("C LINE %i\\n", __LINE__);
                     gd2c10->variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, &bytesRead, true);
                 }}
             """) 
@@ -68,6 +70,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
     # Any allocations as a result of bytecode should have coresponding deallocation bytecode
 
     file.write(f"""\
+            printf("Exit: {function_context.function_identifier}\\n");
             return __return_value;
         }}
     """)
@@ -354,7 +357,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             api10->godot_variant_new_array({FC.variables[op.dest].address_of()}, &arr);
         }}\n""")
 
-    file.write(f"""printf("C LINE %i", __LINE__);\n""")
+    file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     

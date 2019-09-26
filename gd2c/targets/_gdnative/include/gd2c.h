@@ -121,6 +121,7 @@ void initialize_gd2capi() {
     //assert sizeof(void*) == ptrsize;
 
     gd2c10 = (struct gd2c_api_1_0 *)ptr;
+    printf("gd2c10 initialized\n");
 
     api10->godot_string_destroy(&sptrsize);
     api10->godot_string_destroy(&sptr);

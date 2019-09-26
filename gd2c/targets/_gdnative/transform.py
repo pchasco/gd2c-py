@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict, List, Set
-from gd2c.targets._gdnative.variable import *
 from gd2c.controlflow import Block
 from gd2c.bytecode import OPCODE_BREAKPOINT, OPCODE_LINE, GDScriptOp
 from gd2c.gdscriptclass import GDScriptFunction
+from gd2c.address import *
 
 def insert_initializers_transformation(func: GDScriptFunction):
     """Inserts Initialize ops for all implicit stack variables."""
