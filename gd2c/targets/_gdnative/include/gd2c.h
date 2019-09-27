@@ -36,8 +36,8 @@ void vtable_init(vtable_t *vtable, vtable_t *base, int type_id, int method_count
 
 #define VTABLE_METHOD(INSTANCE, METHOD_INDEX, METHOD_NAME, METHOD, METHOD_WRAPPER) \
    INSTANCE.methods[METHOD_INDEX] = (variant_method_ptr_t)METHOD; \
-   INSTANCE.wrappers[METHOD_INDEX] = (method_wrapper_ptr_t)METHOD_WRAPPER; \
-   //INSTANCE.methods_by_name[METHOD_INDEX] = api->godot_string_chars_to_utf8(METHOD_NAME);
+   INSTANCE.methods_by_name[METHOD_INDEX] = api10->godot_string_chars_to_utf8(METHOD_NAME); 
+   //INSTANCE.wrappers[METHOD_INDEX] = (method_wrapper_ptr_t)METHOD_WRAPPER;
 /*
 * Root vtable for all classes
 */

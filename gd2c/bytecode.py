@@ -767,7 +767,7 @@ class CallBuiltinGDScriptOp(GDScriptOp):
         self.arg_count = arg_count
         self.function_index = function_index
         self.args = list(args)[:]
-        self._dest = set([dest])
+        self._writes = set([dest])
         self._reads = set(self.args)
         self.ssa_dest = None
         self.ssa_args = []
@@ -781,12 +781,11 @@ class CallBuiltinGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'CallBuiltinGDScriptOp':
-        count = bytecode[index + 1]
-        return CallBuiltinGDScriptOp(
-            bytecode[index + 3 + count],
-            count,
-            bytecode[index + 1],
-            bytecode[index + 3 : index + 3 + count])
+        fid = bytecode[index + 1]
+        count = bytecode[index + 2]
+        args = bytecode[index + 3 : index + 3 + count]
+        dest = bytecode[index + 3 + count]
+        return CallBuiltinGDScriptOp(dest, fid, count, args)
 
 class JumpGDScriptOp(GDScriptOp):
     branch: int

@@ -67,6 +67,12 @@ class GDNativeCodeGen:
                 #define __GD2C_GODOTPROJECT__            
             
                 #include "gd2c.h"
+
+                void print_variant(godot_variant *v) {{
+                    godot_string s = api10->godot_variant_as_string(v);
+                    api10->godot_print(&s);
+                    api10->godot_string_destroy(&s);
+                }}
             """)
 
             for cls in self.project.iter_classes_in_dependency_order():
@@ -75,10 +81,16 @@ class GDNativeCodeGen:
                 class_codegen.transpile_constant_declarations(class_context, header)
 
                 for func in cls.functions():
-                    if func.len_constants:
+                    if func.has_constants:
                         func_context = class_context.get_function_context(func)
-                        header.write(f"""godot_variant {func_context.local_constants_array_identifier}[{func.len_constants}];\n""")
+                        if len(func.global_names) > 0:
+                            header.write(f"""godot_string_name {func_context.global_names_identifier}[{len(func.global_names)}];\n""")
+
+                        if func.len_constants:
+                            header.write(f"""godot_variant {func_context.local_constants_array_identifier}[{func.len_constants}];\n""")
+                            
                         header.write(f"""int {func_context.initialized_local_constants_array_identifier} = 0;\n""")
+
 
             for cls in self.project.iter_classes_in_dependency_order():
                 class_context = self.class_contexts[cls.type_id]
@@ -122,15 +134,16 @@ class GDNativeCodeGen:
     def _transpile_gdnative_init(self, impl: IO):
         impl.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_gdnative_init(godot_gdnative_init_options *p_options) {{
-                printf("Enter: {self.project.export_prefix}_gdnative_init\\n");
+                //printf("Enter: {self.project.export_prefix}_gdnative_init\\n");
                 api10 = p_options->api_struct;
                 
                 const godot_gdnative_api_struct *extension = api10->next;
-                while (extension && (extension != extension->next)) {{
+                while (extension) {{
                     if (extension->version.major == 1 && extension->version.minor == 1) {{
-                        printf("  Found api11\\n");
+                        //printf("  Found api11\\n");
                         api11 = (const godot_gdnative_core_1_1_api_struct*)extension;
                     }}
+                    if (extension == extension->next) break;
                     extension = extension->next;
                 }}
 
@@ -139,11 +152,12 @@ class GDNativeCodeGen:
                         case GDNATIVE_EXT_NATIVESCRIPT: {{
                             extension = api10->extensions[i];
                             nativescript10 = (godot_gdnative_ext_nativescript_api_struct*)extension;
-                            while (extension && (extension != extension->next)) {{
+                            while (extension) {{
                                 if (extension->version.major == 1 && extension->version.minor == 1) {{
-                                    printf("  Found nativescript11\\n");
+                                    //printf("  Found nativescript11\\n");
                                     nativescript11 = (const godot_gdnative_ext_nativescript_1_1_api_struct*)extension;
                                 }}
+                                if (extension == extension->next) break;
                                 extension = extension->next;
                             }}
                         }}; break;
@@ -156,14 +170,14 @@ class GDNativeCodeGen:
                 initialize_gd2capi();
                 
                 api10->godot_variant_new_nil(&__nil);
-                printf("Exit: {self.project.export_prefix}_gdnative_init\\n");
+                //printf("Exit: {self.project.export_prefix}_gdnative_init\\n");
             }}        
         """)
 
     def _transpile_gdnative_terminate(self, impl: IO):
         impl.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_gdnative_terminate(godot_gdnative_terminate_options *p_options) {{
-                printf("Enter: {self.project.export_prefix}_gdnative_terminate\\n");
+                //printf("Enter: {self.project.export_prefix}_gdnative_terminate\\n");
                 api10->godot_variant_destroy(&__nil);
         """)
 
@@ -190,14 +204,14 @@ class GDNativeCodeGen:
     def _transpile_nativescript_registrations(self, impl: IO):
         impl.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_nativescript_init(void *p_handle) {{
-                printf("Enter: {self.project.export_prefix}_nativescript_init\\n");
+                //printf("Enter: {self.project.export_prefix}_nativescript_init\\n");
         """)
 
         def visitor(cls: GDScriptClass, depth: int):
             class_context = self.class_contexts[cls.type_id]
             impl.write(f"""\
                 {{
-                    printf("  Register class: {cls.name}\\n");
+                    //printf("  Register class: {cls.name}\\n");
                     godot_instance_create_func create = {{ NULL, NULL, NULL }};
                     create.create_func = {class_context.ctor_identifier};
                     godot_instance_destroy_func destroy = {{ NULL, NULL, NULL }};
@@ -209,7 +223,7 @@ class GDNativeCodeGen:
             for entry in class_context.vtable_entries:
                 impl.write(f"""\
                     {{
-                        printf("  Register method: {entry.func_context.function_identifier}\\n");
+                        //printf("  Register method: {entry.func_context.function_identifier}\\n");
                         godot_instance_method method = {{ NULL, NULL, NULL }};
                         method.method = &{entry.func_context.function_identifier};
                         godot_method_attributes attributes = {{ GODOT_METHOD_RPC_MODE_DISABLED }};
@@ -220,7 +234,7 @@ class GDNativeCodeGen:
             for signal in cls.signals():
                 impl.write(f"""\
                     {{
-                        printf("  Register signal: {signal}\\n");
+                        //printf("  Register signal: {signal}\\n");
                         godot_string name = api10->godot_string_chars_to_utf8("{signal}");
                         godot_signal signal = {{ name, 0, NULL, 0, NULL }};
                         nativescript10->godot_nativescript_register_signal(p_handle, "{signal}", &signal);
@@ -230,7 +244,7 @@ class GDNativeCodeGen:
             for member_context in class_context.member_contexts.values():
                 impl.write(f"""\
                     {{
-                        printf("  Register member: {member_context.member_identifier}\\n");
+                        //printf("  Register member: {member_context.member_identifier}\\n");
                         godot_property_set_func setter = {{ NULL, NULL, NULL }};
                         setter.set_func = &{member_context.setter_identifier};
                         godot_property_get_func getter = {{ NULL, NULL, NULL }};
@@ -240,9 +254,13 @@ class GDNativeCodeGen:
                     }}
                 """)
 
+            impl.write(f"""\
+                {class_context.vtable_init_function_identifier}();
+                """)
+
         self.project.visit_classes_in_dependency_order(visitor)
 
         impl.write(f"""\
-                printf("Exit: {self.project.export_prefix}_nativescript_init\\n");
+                //printf("Exit: {self.project.export_prefix}_nativescript_init\\n");
             }}
         """)

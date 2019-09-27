@@ -4,6 +4,7 @@ from gd2c.address import *
 from gd2c.variant import VariantType
 from gd2c.bytecode import *
 from gd2c.controlflow import Block
+from gd2c.targets._gdnative import builtin as BI
 if TYPE_CHECKING:
     from gd2c.targets.gdnative import FunctionContext
 
@@ -28,7 +29,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
     file.write(__transpile_signature(function_context))
     file.write(f"""\
         {{   
-            printf("Enter: {function_context.function_identifier}\\n");
+            //printf("Enter: {function_context.function_identifier}\\n");
             struct {function_context.class_context.struct_tag} *p_user_data = (struct {function_context.class_context.struct_tag}*)_p_user_data;
             godot_bool __flag;   
             godot_variant_call_error __error;
@@ -37,20 +38,32 @@ def transpile_function(function_context: FunctionContext, file: IO):
         """)
 
     # Initialize function local constants if first time function was called
-    if function_context.func.len_constants > 0:
+    if function_context.func.has_constants:
         file.write(f"""\
             if (0 == {function_context.initialized_local_constants_array_identifier}) {{
         """) 
-
         for const in function_context.func.constants():
             file.write(f"""\
                 {{
                     uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
                     int bytesRead;
-                    printf("C LINE %i\\n", __LINE__);
                     gd2c10->variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, &bytesRead, true);
+                    print_variant(&{function_context.local_constants_array_identifier}[{const.index}]);
                 }}
             """) 
+            
+        for index, name in enumerate(function_context.func.global_names):
+            utf8 = bytes(name, 'UTF-8')
+            file.write(f"""\
+                {{
+                    char data[] = {{ {','.join(map(lambda b: str(b), utf8))} }};
+                    godot_string s;
+                    api10->godot_string_new(&s);
+                    api10->godot_string_parse_utf8_with_len(&s, data, {len(utf8)});
+                    api10->godot_string_name_new(&{function_context.global_names_identifier}[{index}], &s);
+                    api10->godot_string_destroy(&s);
+                }}
+                """)
 
         file.write(f"""\
                 {function_context.initialized_local_constants_array_identifier} = 1;            
@@ -70,7 +83,7 @@ def transpile_function(function_context: FunctionContext, file: IO):
     # Any allocations as a result of bytecode should have coresponding deallocation bytecode
 
     file.write(f"""\
-            printf("Exit: {function_context.function_identifier}\\n");
+            //printf("Exit: {function_context.function_identifier}\\n");
             return __return_value;
         }}
     """)
@@ -303,7 +316,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
     def opcode_setnamed(op: SetNamedGDScriptOp):
         nonlocal FC
         file.write(f"""\
-            gd2c10->variant_get_named(\
+            gd2c10->variant_set_named(\
                 {FC.variables[op.dest].address_of()}, \
                 &{FC.global_names_identifier}[{op.name_index}], \
                 {FC.variables[op.source].address_of()}, \
@@ -316,7 +329,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             gd2c10->variant_get_named( \
                 {FC.variables[op.source].address_of()}, \
                 &{FC.global_names_identifier}[{op.name_index}],\
-                {FC.variables[op.dest].address_of()},
+                {FC.variables[op.dest].address_of()}, \
                 &__flag);
             """)
 
@@ -326,17 +339,16 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             gd2c10->object_set_property( \
                 p_instance, \
                 &{FC.global_names_identifier}[{op.name_index}], \
-                {FC.variables[op.source].address_of()}, \
-                &__flag);
+                {FC.variables[op.source].address_of()});
             """)
 
     def opcode_getmember(op: GetMemberGDScriptOp):
         nonlocal FC
         file.write(f"""\
             gd2c10->object_get_property(\
+                {FC.variables[op.dest].address_of()}, \
                 p_instance, \
-                &{FC.global_names_identifier}[{op.name_index}], \
-                {FC.variables[op.dest].address_of()});
+                &{FC.global_names_identifier}[{op.name_index}]);
             """)
 
     def opcode_constructarray(op: ConstructArrayGDScriptOp):
@@ -357,7 +369,15 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             api10->godot_variant_new_array({FC.variables[op.dest].address_of()}, &arr);
         }}\n""")
 
-    file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
+    def opcode_callbuiltin(op: CallBuiltinGDScriptOp):
+        BI.call_builtin(FC, op, file)
+
+    def opcode_assigntypedbuiltin(op: AssignTypedBuiltinGDScriptOp):
+        file.write(f"""\
+            api10->godot_variant_new_copy({FC.variables[op.dest].address_of()}, {FC.variables[op.source].address_of()});
+            """)
+
+    #file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
@@ -407,13 +427,15 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         opcode_constructarray(op) # type: ignore
     elif op.opcode == OPCODE_CALLSELF:
         pass
+    elif op.opcode == OPCODE_CALLBUILTIN:
+        opcode_callbuiltin(op) # type: ignore
+    elif op.opcode == OPCODE_ASSIGNTYPEDBUILTIN:
+        opcode_assigntypedbuiltin(op) # type: ignore
 
     elif op.opcode == OPCODE_CONSTRUCT:
         file.write(f"""// OPCODE_CONSTRUCT\n""")
     elif op.opcode == OPCODE_CONSTRUCTDICTIONARY:
         file.write(f"""// OPCODE_CONSTRUCTDICTIONARY\n""")
-    elif op.opcode == OPCODE_CALLBUILTIN:
-        file.write(f"""// OPCODE_CALLBUILTIN\n""")
     elif op.opcode == OPCODE_ITERATEBEGIN:
         file.write(f"""// OPCODE_ITERATEBEGIN\n""")
     elif op.opcode == OPCODE_ITERATE:
@@ -429,8 +451,6 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         file.write(f"""// OPCODE_EXTENDSTEST\n""")
     elif op.opcode == OPCODE_ISBUILTIN:
         file.write(f"""// OPCODE_ISBUILTIN\n""")
-    elif op.opcode == OPCODE_ASSIGNTYPEDBUILTIN:
-        file.write(f"""// OPCODE_ASSIGNTYPEDBUILTIN\n""")
     elif op.opcode == OPCODE_ASSIGNTYPEDNATIVE:
         file.write(f"""// OPCODE_ASSIGNTYPEDNATIVE\n""")
     elif op.opcode == OPCODE_ASSIGNTYPEDSCRIPT:

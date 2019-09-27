@@ -90,6 +90,10 @@ class GDScriptFunction:
         self.yields = False
 
     @property
+    def has_constants(self) -> bool:
+        return len(self.global_names) > 0 or len(self._constants) > 0
+
+    @property
     def len_stack_array(self) -> int:
         return self.stack_size - len(self._parameters)
 
