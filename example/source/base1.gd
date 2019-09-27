@@ -19,6 +19,8 @@ func do_actual_stuff(delta: float):
 	elif position.x < 100:
 		direction = 1
 
+	print("Hello! The value of x is ", position.x, " and y is ", position.y)
+
 # func diamond_dom(a):
 # 	a = a * 1
 # 	if a == 2:

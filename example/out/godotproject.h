@@ -24,7 +24,7 @@ int Class_1__physics_process_local_const_initialized = 0;
 godot_variant Class_1__init_local_const[2];
 int Class_1__init_local_const_initialized = 0;
 godot_string_name Class_1_do_actual_stuff_global_names[3];
-godot_variant Class_1_do_actual_stuff_local_const[5];
+godot_variant Class_1_do_actual_stuff_local_const[7];
 int Class_1_do_actual_stuff_local_const_initialized = 0;
             godot_variant Class_1_get_direction(
                 godot_object *p_instance,

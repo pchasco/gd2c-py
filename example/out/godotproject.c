@@ -59,7 +59,7 @@ godot_variant Class_1__physics_process_func(godot_object *p_instance, void *p_me
     godot_variant st_83886081;
     goto _entry;
 _entry:
-    // <gd2c.bytecode.ParameterGDScriptOp object at 0x110b415f8>;
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x107080358>;
     api10->godot_variant_new_nil(&st_83886081);
     goto _0;
 _0:
@@ -119,6 +119,11 @@ _2:
     godot_variant *args[] = {&Class_1__init_local_const[0]};
     gd2c10->variant_convert(&st_83886080, t, (const godot_variant **)args, 1, &err);
 }
+    {
+        godot_variant *args[] = {&Class_1__init_local_const[0], &Class_1__init_local_const[1]};
+        godot_variant_call_error err;
+        gd2c10->call_gdscript_builtin(57, (const godot_variant **)args, 2, &st_83886080, &err);
+    }
     api10->godot_variant_new_copy(&p_user_data->direction, &st_83886080);
     goto _exit;
 _exit:
@@ -169,6 +174,18 @@ godot_variant Class_1_do_actual_stuff_func(godot_object *p_instance, void *p_met
             print_variant(&Class_1_do_actual_stuff_local_const[4]);
         }
         {
+            uint8_t data[] = {4, 0, 0, 0, 25, 0, 0, 0, 72, 101, 108, 108, 111, 33, 32, 84, 104, 101, 32, 118, 97, 108, 117, 101, 32, 111, 102, 32, 120, 32, 105, 115, 32, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[5], data, 36, &bytesRead, true);
+            print_variant(&Class_1_do_actual_stuff_local_const[5]);
+        }
+        {
+            uint8_t data[] = {4, 0, 0, 0, 10, 0, 0, 0, 32, 97, 110, 100, 32, 121, 32, 105, 115, 32, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[6], data, 20, &bytesRead, true);
+            print_variant(&Class_1_do_actual_stuff_local_const[6]);
+        }
+        {
             char data[] = {112, 111, 115, 105, 116, 105, 111, 110};
             godot_string s;
             api10->godot_string_new(&s);
@@ -197,17 +214,21 @@ godot_variant Class_1_do_actual_stuff_func(godot_object *p_instance, void *p_met
     godot_variant st_83886081;
     godot_variant st_83886083;
     godot_variant st_83886084;
+    godot_variant st_83886082;
     goto _entry;
 _entry:
-    // <gd2c.bytecode.ParameterGDScriptOp object at 0x110c380f0>;
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x107175550>;
     // DEFINE 67108864;
     // DEFINE 67108865;
     // DEFINE 67108866;
     // DEFINE 67108867;
     // DEFINE 67108868;
+    // DEFINE 67108869;
+    // DEFINE 67108870;
     api10->godot_variant_new_nil(&st_83886081);
     api10->godot_variant_new_nil(&st_83886083);
     api10->godot_variant_new_nil(&st_83886084);
+    api10->godot_variant_new_nil(&st_83886082);
     goto _0;
 _0:
     goto _2;
@@ -234,7 +255,7 @@ _2:
     __flag = api10->godot_variant_as_bool(&st_83886081);
     if (__flag)
         goto _81;
-    goto _94;
+    goto _116;
 _81:
 {
     int t = api10->godot_variant_as_int(&Class_1_do_actual_stuff_local_const[3]);
@@ -242,30 +263,50 @@ _81:
     godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[2]};
     gd2c10->variant_convert(&st_83886081, t, (const godot_variant **)args, 1, &err);
 }
+    {
+        godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[2], &Class_1_do_actual_stuff_local_const[3]};
+        godot_variant_call_error err;
+        gd2c10->call_gdscript_builtin(57, (const godot_variant **)args, 2, &st_83886081, &err);
+    }
     api10->godot_variant_new_copy(&p_user_data->direction, &st_83886081);
     goto _93;
 _93:
+    gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
+    gd2c10->variant_get_named(&st_83886081, &Class_1_do_actual_stuff_global_names[1], &st_83886081, &__flag);
+    gd2c10->object_get_property(&st_83886082, p_instance, &Class_1_do_actual_stuff_global_names[0]);
+    gd2c10->variant_get_named(&st_83886082, &Class_1_do_actual_stuff_global_names[2], &st_83886082, &__flag);
+    {
+        godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[5], &st_83886081, &Class_1_do_actual_stuff_local_const[6], &st_83886082};
+        godot_variant_call_error err;
+        gd2c10->call_gdscript_builtin(62, (const godot_variant **)args, 4, &st_83886081, &err);
+    }
     goto _exit;
 _exit:
     api10->godot_variant_destroy(&st_83886081);
     api10->godot_variant_destroy(&st_83886083);
     api10->godot_variant_destroy(&st_83886084);
+    api10->godot_variant_destroy(&st_83886082);
     goto _cleanup;
-_94:
+_116:
     gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
     gd2c10->variant_get_named(&st_83886081, &Class_1_do_actual_stuff_global_names[1], &st_83886081, &__flag);
     api11->godot_variant_evaluate(2, &st_83886081, &Class_1_do_actual_stuff_local_const[0], &st_83886081, &__flag);
     __flag = api10->godot_variant_as_bool(&st_83886081);
     if (__flag)
-        goto _109;
+        goto _131;
     goto _93;
-_109:
+_131:
 {
     int t = api10->godot_variant_as_int(&Class_1_do_actual_stuff_local_const[3]);
     godot_variant_call_error err;
     godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[4]};
     gd2c10->variant_convert(&st_83886081, t, (const godot_variant **)args, 1, &err);
 }
+    {
+        godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[4], &Class_1_do_actual_stuff_local_const[3]};
+        godot_variant_call_error err;
+        gd2c10->call_gdscript_builtin(57, (const godot_variant **)args, 2, &st_83886081, &err);
+    }
     api10->godot_variant_new_copy(&p_user_data->direction, &st_83886081);
     goto _93;
 _cleanup:
@@ -345,6 +386,8 @@ void GDN_EXPORT GD2C_gdnative_terminate(godot_gdnative_terminate_options *p_opti
         api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[2]);
         api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[3]);
         api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[4]);
+        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[5]);
+        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[6]);
     }
 }
 void GDN_EXPORT GD2C_nativescript_init(void *p_handle)
