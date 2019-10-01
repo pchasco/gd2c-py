@@ -161,6 +161,10 @@ class GDScriptOp:
     def has_side_effects(self) -> bool:
         return False
 
+    @property
+    def is_branch(self) -> bool:
+        return False
+
 class NoopGDScriptOp(GDScriptOp):
     def __init__(self):
         super().__init__(OPCODE_NOOP)
@@ -535,6 +539,10 @@ class ReturnGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'ReturnGDScriptOp':
         return ReturnGDScriptOp(bytecode[index + 1])
 
+    @property
+    def is_branch(self) -> bool:
+        return True
+
 class ConstructGDScriptOp(GDScriptOp):
     vtype: VariantType
     arg_count: int
@@ -807,6 +815,10 @@ class JumpGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpGDScriptOp':
         return JumpGDScriptOp(bytecode[index + 1])
 
+    @property
+    def is_branch(self) -> bool:
+        return True
+
 class JumpIfGDScriptOp(GDScriptOp):
     branch: int
     condition: int
@@ -839,6 +851,10 @@ class JumpIfGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpIfGDScriptOp':
         return JumpIfGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
 
+    @property
+    def is_branch(self) -> bool:
+        return True
+
 class JumpIfNotGDScriptOp(GDScriptOp):
     branch: int
     condition: int
@@ -864,6 +880,10 @@ class JumpIfNotGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpIfNotGDScriptOp':
         return JumpIfNotGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
 
+    @property
+    def is_branch(self) -> bool:
+        return True
+
 class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
     jump_table: List[int]
     fallthrough: int
@@ -880,6 +900,10 @@ class JumpToDefaultArgumentGDScriptOp(GDScriptOp):
     @property
     def stride(self) -> int:
         return 1
+
+    @property
+    def is_branch(self) -> bool:
+        return True
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpToDefaultArgumentGDScriptOp':
@@ -914,9 +938,101 @@ class EndGDScriptOp(GDScriptOp):
     def stride(self) -> int:
         return 1
 
+    @property
+    def is_branch(self) -> bool:
+        return True
+
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'EndGDScriptOp':
         return EndGDScriptOp()
+
+class IterateBeginGDScriptOp(GDScriptOp):
+    counter: int
+    container: int
+    branch: int
+    fallthrough: int
+    iterator: int
+    ssa_counter: Optional[Value]
+    ssa_container: Optional[Value]
+    ssa_iterator: Optional[Value]
+
+    def __init__(self, counter: int, container: int, branch: int, fallthrough: int, iterator: int):
+        super().__init__(OPCODE_ITERATEBEGIN)
+        self.counter = counter
+        self.container = container
+        self.branch = branch
+        self.fallthrough = fallthrough
+        self.iterator = iterator
+        self.ssa_counter: None
+        self.ssa_container: None
+        self.ssa_iterator: None
+
+        self._writes = set([iterator, counter])
+        self._reads = set([container])
+
+    def __str__(self):
+        return f"ITERATE BEGIN: BRANCH {self.branch} : FALLTHROUGH {self.fallthrough}"
+
+    @property
+    def stride(self) -> int:
+        return 5
+
+    @property
+    def is_branch(self) -> bool:
+        return True
+
+    @staticmethod
+    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'IterateBeginGDScriptOp':
+        counter = bytecode[index + 1]
+        container = bytecode[index + 2]
+        branch = bytecode[index + 3]
+        iterator = bytecode[index + 4]
+        fallthrough = index + 5
+        return IterateBeginGDScriptOp(counter, container, branch, fallthrough, iterator)
+
+class IterateGDScriptOp(GDScriptOp):
+    counter: int
+    container: int
+    branch: int
+    fallthrough: int
+    iterator: int
+    ssa_counter: Optional[Value]
+    ssa_container: Optional[Value]
+    ssa_iterator: Optional[Value]
+
+    def __init__(self, counter: int, container: int, branch: int, fallthrough: int, iterator: int):
+        super().__init__(OPCODE_ITERATE)
+        self.counter = counter
+        self.container = container
+        self.branch = branch
+        self.fallthrough = fallthrough
+        self.iterator = iterator
+        self.ssa_counter = None
+        self.ssa_container = None
+        self.ssa_iterator = None
+
+        self._writes = set([iterator, counter])
+        self._reads = set([container])
+
+    def __str__(self):
+        return f"ITERATE: FALLTHROUGH {self.fallthrough} : EXIT {self.branch}"
+
+    @property
+    def stride(self) -> int:
+        return 5
+
+    @property
+    def is_branch(self) -> bool:
+        return True
+
+    @staticmethod
+    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'IterateGDScriptOp':
+        counter = bytecode[index + 1]
+        container = bytecode[index + 2]
+        branch = bytecode[index + 3]
+        iterator = bytecode[index + 4]
+        fallthrough = index + 5
+        return IterateGDScriptOp(counter, container, branch, fallthrough, iterator)    
 
 class PseudoGDScriptOp(GDScriptOp):
     def __init__(self, opcode: int):
@@ -1039,8 +1155,8 @@ _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDS
     OPCODE_JUMPIFNOT: JumpIfNotGDScriptOp.extract,
     OPCODE_JUMPTODEFAULTARGUMENT: JumpToDefaultArgumentGDScriptOp.extract,
     OPCODE_RETURN: ReturnGDScriptOp.extract,
-    OPCODE_ITERATEBEGIN: None,
-    OPCODE_ITERATE: None,
+    OPCODE_ITERATEBEGIN: IterateBeginGDScriptOp.extract,
+    OPCODE_ITERATE: IterateGDScriptOp.extract,
     OPCODE_ASSERT: None,
     OPCODE_BREAKPOINT: None,
     OPCODE_LINE: LineGDScriptOp.extract,

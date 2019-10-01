@@ -190,7 +190,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         nonlocal FC
         file.write(f"""\
             api10->godot_variant_new_copy(&__return_value, {FC.variables[op.source].address_of()});        
-            goto _exit;
+            goto {FC.func.cfg.exit_node.label};
         """)
 
     def opcode_destroy(op: DestroyGDScriptOp):

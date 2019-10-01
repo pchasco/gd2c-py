@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Union, Iterable, Tuple, Set, Dict, FrozenSet, Any, Callable
-from gd2c.bytecode import GDScriptOp, JumpToDefaultArgumentGDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
+from gd2c.bytecode import GDScriptOp, IterateBeginGDScriptOp, IterateGDScriptOp, JumpToDefaultArgumentGDScriptOp, PseudoGDScriptOp, DefineGDScriptOp, ParameterGDScriptOp, JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, JumpToDefaultArgumentGDScriptOp, ReturnGDScriptOp, EndGDScriptOp
 from gd2c.address import *
 from gd2c.gdscriptclass import GDScriptFunction
 from gd2c.variant import VariantType
@@ -30,10 +30,7 @@ class Value:
 
 class Block:
     def __init__(self, label: str):
-        self.edges: List['Edge'] = []
-        self.control_value: Union[None, Value] = None
-        self.control_address: Union[None, int] = None
-        self.block_type: int = BLOCK_TYPE_NORMAL
+        self.edges: Set['Edge'] = set([])
         self._label = label
         self._ops: List[GDScriptOp] = []
         self._locked = False
@@ -149,7 +146,7 @@ class Block:
     def replace_branch_address(self, old_addr: int, new_addr: int):
         """Change any instance of old_addr in a branch to new_addr"""
         for op in self._ops:
-            if self._locked and isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+            if self._locked and isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, IterateGDScriptOp, IterateBeginGDScriptOp)):
                 if op.fallthrough == old_addr:
                     op.fallthrough = new_addr
                 if op.branch == old_addr:
@@ -262,9 +259,6 @@ class ControlFlowGraph:
         return self._nodes.get(label, None)
 
     def node_label_from_address(self, original_node_address: int) -> str:
-        if original_node_address == EXIT_NODE_ADDRESS:
-            return f"_exit"
-        
         return f"_{original_node_address}"
 
     def node_from_address(self, original_node_address: int) -> Block:
@@ -372,7 +366,7 @@ class ControlFlowGraph:
         # Update jumps with correct block addresses
         for node in visited:
             for op in node.ops:
-                if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
+                if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, IterateGDScriptOp, IterateBeginGDScriptOp)):
                     branch = self.node_label_from_address(op.branch)
                     fallthrough = self.node_label_from_address(op.fallthrough)
                     op.branch = node_ip[branch]
@@ -393,6 +387,9 @@ class ControlFlowGraph:
     def pretty_print(self, print_def_use: bool = True, print_in_out: bool = True):
         worklist = [self._entry_node]
         visited: Set[Block] = set()
+        
+        print("-- BEGIN CFG --")
+        
         while any(worklist):
             node = worklist.pop()
             assert node
@@ -401,7 +398,7 @@ class ControlFlowGraph:
 
             visited.add(node)
 
-            if ('0' in self._nodes) and isinstance(node.last_op, (JumpGDScriptOp, JumpIfNotGDScriptOp)):
+            if ('0' in self._nodes) and isinstance(node.last_op, (JumpGDScriptOp, JumpIfNotGDScriptOp, IterateGDScriptOp, IterateBeginGDScriptOp)):
                 # Here we assume nodes are labeled with the address of the block that created them
                 worklist.append(self._nodes[str(node.last_op.branch)])
                 worklist.append(self._nodes[str(node.last_op.fallthrough)])
@@ -418,7 +415,7 @@ class ControlFlowGraph:
             succs = [n.dest.label for n in node.edges]
 
             print(f"+------------------------------------------------")
-            print(f"| Block: {node.label} : Type: {['Normal', 'If', 'Return', 'Exit', 'Defarg'][node.block_type]}")
+            print(f"| Block: {node.label}")
             print(f"| Preds: {', '.join(map(lambda n: n.label, self.preds(node)))} : Succs: {', '.join(succs)}")
             print(f"|------------------------------------------------")
             if print_def_use:
@@ -438,146 +435,114 @@ class ControlFlowGraph:
 
             print("")
         
-        print("")
+        print("-- END CFG --")
 
 def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
-    blocks: Dict[str, Block] = {}
-    block_labels: Dict[int, str] = {
-        EXIT_NODE_ADDRESS: "_exit"
-    }
-    block_edges: Dict[Block, List[int]] = {}
-    
-    # Build entry node.
-    entry_node = Block('_entry')
-    blocks[entry_node.label] = entry_node
-    # insert parameter ops for all parameters. Parameter ops create
-    # a definition to satisfy SSA
-    parameter_ops = [ParameterGDScriptOp(p) for p in func.parameters()]
-    # Insert empty defs for all values referenced that are defined outside
-    # the function to satisfy SSA
-    parameter_addresses = set([p.address.address for p in func.parameters()])
-    define_ops = [DefineGDScriptOp(c.address.address) for c in func.constants()]
-    for p in parameter_ops:
-        entry_node.append_op(p)
-    for dd in define_ops:
-        entry_node.append_op(dd)
-    entry_node.append_op(JumpGDScriptOp(0))
+    worklist: List[int] = [0]
+    ops = list(func.ops())
+    blocks: Dict[int, Block] = {}
+    visited: Set[int] = set()
 
-    # Build exit node
-    exit_node = Block(block_labels[EXIT_NODE_ADDRESS])
-    exit_node.block_type = BLOCK_TYPE_EXIT
-    blocks[exit_node.label] = exit_node
-    block_edges[exit_node] = []
-
-    # Identify jump targets which always begin new blocks
-
-    jump_targets: Set[int] = set()
-    for ip, op in func.ops():
-        if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp)):
-            jump_targets = jump_targets | set((op.branch, op.fallthrough))
-        elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
-            jump_targets = jump_targets | set(op.jump_table)
-
-    # find blocks and create nodes
-
-    block: Block = None # type: ignore
-    new_block_flag = True
-    is_block_closed = False
-
-    for ip, op in func.ops():
-        if new_block_flag or (ip in jump_targets):
-            if block and not new_block_flag:
-                # We need to manually "close" the block by inserting an edge.
-                block.block_type = BLOCK_TYPE_NORMAL
-                block_edges[block] = [ip]
-                jumpop = JumpGDScriptOp(ip)
-                block.append_op(jumpop)
-
-            block_labels[ip] = f'_{str(ip)}'
-            block = Block(block_labels[ip])
-            blocks[block.label] = block
-            new_block_flag = False
-
-        #TODO: This is a little silly... must be a better way
-        if isinstance(op, (EndGDScriptOp, ReturnGDScriptOp)):
-            new_block_flag = True
-            block.block_type = BLOCK_TYPE_NORMAL
-            block_edges[block] = [EXIT_NODE_ADDRESS]
-            block.append_op(op)
-        elif isinstance(op, JumpIfGDScriptOp):
-            new_block_flag = True
-            block.block_type = BLOCK_TYPE_BRANCH
-            block.control_address = op.condition
-            block_edges[block] = [op.branch, op.fallthrough]
-            block.append_op(op)
-        elif isinstance(op, JumpIfNotGDScriptOp):
-            new_block_flag = True
-            block.block_type = BLOCK_TYPE_BRANCH
-            block.control_address = op.condition
-            # For if not we swap the fallthrough and branch to keep things simple by keeping only one type
-            # of branch block 
-            block_edges[block] = [op.fallthrough, op.branch]
-            ifop = JumpIfGDScriptOp(op.fallthrough, op.condition, op.branch)
-            block.append_op(ifop)
-        elif isinstance(op, JumpGDScriptOp):
-            new_block_flag = True
-            # Even though this block ends with a jump, we consider it a normal block because
-            # the jump is unconditional and doesn't require a control value
-            block.block_type = BLOCK_TYPE_NORMAL
-            block_edges[block] = [op.branch, op.fallthrough]
-            block.append_op(op)
-        elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
-            new_block_flag = True
-            block.block_type = BLOCK_TYPE_DEFARGS
-            block_edges[block] = [op.fallthrough]
-            block_edges[block].extend(op.jump_table)
-            block.append_op(op)
+    def get_block(ip: int):
+        nonlocal blocks
+        if ip in blocks:
+            return blocks[ip]
         else:
-            block.append_op(op)
-            is_block_closed = False
+            block = Block(f'_{ip}')
+            blocks[ip] = block
+            return block
 
+    while worklist:
+        start_ip = worklist.pop()
+        if start_ip in visited:
+            continue
+
+        visited.add(start_ip)
+
+        block = get_block(start_ip)
+
+        i = 0
+        while i < len(ops):
+            ip, op = ops[i]
+            if ip < start_ip:
+                i += 1
+                continue
+
+            if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, IterateGDScriptOp, IterateBeginGDScriptOp)):
+                worklist.append(op.branch)
+                worklist.append(op.fallthrough)
+                break
+            elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
+                worklist.extend(op.jump_table)    
+                worklist.append(op.fallthrough)  
+                break
+            elif isinstance(op, (ReturnGDScriptOp, EndGDScriptOp)):
+                worklist.append(EXIT_NODE_ADDRESS)
+                break
+
+            i += 1
+
+    # Add ops to blocks
+    begin_blocks = sorted(visited)
+    for i, begin_ip in enumerate(begin_blocks):
+        if i + 1 < len(begin_blocks):
+            end_ip = begin_blocks[i + 1]
+            block = get_block(begin_ip)
+            for op_ip, op in ops:
+                if op_ip >= end_ip:
+                    break
+                elif op_ip >= begin_ip:
+                    block.append_op(op)
+            
+            # Every block must end in a branch instruction unless it is
+            # the terminating block
+            if block.last_op and not block.last_op.is_branch:
+                block.append_op(JumpGDScriptOp(end_ip))
+
+    # Add edges to blocks
+    for block in blocks.values():
+        for op in block.ops:
+            if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, IterateGDScriptOp, IterateBeginGDScriptOp)):
+                block.edges.add(Edge(block, get_block(op.branch)))
+                block.edges.add(Edge(block, get_block(op.fallthrough)))
+            elif isinstance(op, JumpToDefaultArgumentGDScriptOp):
+                block.edges.update([Edge(block, get_block(jip)) for jip in op.jump_table])
+                block.edges.add(Edge(block, get_block(op.fallthrough)))
+            elif isinstance(op, (ReturnGDScriptOp, EndGDScriptOp)):
+                block.edges.add(Edge(block, get_block(EXIT_NODE_ADDRESS)))
+
+    # Populate new control flow graph
     cfg = ControlFlowGraph()
-    cfg._entry_node = entry_node
-    cfg._exit_node = exit_node
-
-    # create edges
+    cfg._exit_node = get_block(EXIT_NODE_ADDRESS)
+    assert cfg._exit_node
+    cfg.add_node(cfg._exit_node)
     for block in blocks.values():
         cfg.add_node(block)
-        if block is entry_node:
-            block.edges = [Edge(block, blocks[block_labels[0]])]
-        elif block.block_type == BLOCK_TYPE_NORMAL:
-            # Normal block has only one edge
-            block.edges = [Edge(block, blocks[block_labels[block_edges[block][0]]])]
-        elif block.block_type in (BLOCK_TYPE_BRANCH, BLOCK_TYPE_DEFARGS):
-            block.edges = [
-                Edge(block, blocks[block_labels[be]])
-                for i, be in enumerate(block_edges[block])
-            ]
-        elif block.block_type == BLOCK_TYPE_RETURN:
-            # Return always links to exit node
-            block.edges = [Edge(block, blocks[block_labels[EXIT_NODE_ADDRESS]])]
-
         for edge in block.edges:
             cfg.add_edge(edge)
 
-    prune(cfg)
+    # Add synthetic entry node
+    cfg._entry_node = Block('_entry')
+    cfg.add_node(cfg._entry_node)
+    # Add instructions to define used constants/parameters. These ops generally have
+    # no executable effect but are required for data flow analysis and SSA form
+    parameter_ops = [ParameterGDScriptOp(p) for p in func.parameters()]
+    parameter_addresses = set([p.address.address for p in func.parameters()])
+    define_ops = [DefineGDScriptOp(c.address.address) for c in func.constants()]
+    for p in parameter_ops:
+        cfg._entry_node.append_op(p)
+    for dd in define_ops:
+        cfg._entry_node.append_op(dd)
+    # Final up must be branch to block 0
+    cfg._entry_node.append_op(JumpGDScriptOp(0))
+    entry_edge = Edge(cfg._entry_node, get_block(0))
+    cfg._entry_node.edges.add(entry_edge)
+    cfg.add_edge(entry_edge)
 
     for node in blocks.values():
         node.lock()
 
     return cfg
-
-def prune(cfg: ControlFlowGraph):
-    remove_nodes = []
-    for node in cfg.nodes():
-        if node is not cfg.entry_node and not any(cfg.preds(node)):
-            edges = cfg.back_edges(node)
-            for edge in edges:
-                cfg.remove_edge(edge)
-            remove_nodes.append(node)
-
-    for node in remove_nodes:
-        cfg.remove_node(node)
 
 
 

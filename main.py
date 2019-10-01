@@ -66,10 +66,10 @@ if __name__ == "__main__":
                 transform.make_coroutine(func)
 
             func.cfg = controlflow.build_control_flow_graph(func)
-            # func.cfg.pretty_print()
 
             # Transforms not requiring SSA form
             transform.strip_debug(func)
+            func.cfg.pretty_print()
 
             # Transforms done in SSA form
             if False:
@@ -91,7 +91,6 @@ if __name__ == "__main__":
             
             func.cfg.update_function(func)
             func.cfg = None
-
 
     # Phase 2: Apply target-specific transformations
     target = get_target(project_target, project)

@@ -16,68 +16,25 @@ void Class_1_dtor(godot_object *p_instance, void *p_method_data, void *_p_user_d
     api10->godot_variant_destroy(&p_user_data->__self);
     api10->godot_free(p_user_data);
 }
-godot_variant Class_1_get_direction(
+godot_variant Class_1_get_arr(
     godot_object *p_instance,
     void *p_method_data,
     void *_p_user_data)
 {
     struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
     godot_variant value;
-    api10->godot_variant_new_copy(&value, &p_user_data->direction);
+    api10->godot_variant_new_copy(&value, &p_user_data->arr);
     return value;
 }
 
-void Class_1_set_direction(
+void Class_1_set_arr(
     godot_object *p_instance,
     void *p_method_data,
     void *_p_user_data,
     godot_variant *p_value)
 {
     struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
-    api10->godot_variant_new_copy(&p_user_data->direction, p_value);
-}
-godot_variant Class_1__physics_process_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
-{
-    //printf("Enter: Class_1__physics_process_func\n");
-    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
-    godot_bool __flag;
-    godot_variant_call_error __error;
-    godot_variant __return_value;
-    api10->godot_variant_new_nil(&__return_value);
-    if (0 == Class_1__physics_process_local_const_initialized)
-    {
-        {
-            char data[] = {100, 111, 95, 97, 99, 116, 117, 97, 108, 95, 115, 116, 117, 102, 102};
-            godot_string s;
-            api10->godot_string_new(&s);
-            api10->godot_string_parse_utf8_with_len(&s, data, 15);
-            api10->godot_string_name_new(&Class_1__physics_process_global_names[0], &s);
-            api10->godot_string_destroy(&s);
-        }
-        Class_1__physics_process_local_const_initialized = 1;
-    }
-    godot_variant st_83886081;
-    goto _entry;
-_entry:
-    // <gd2c.bytecode.ParameterGDScriptOp object at 0x107080358>;
-    api10->godot_variant_new_nil(&st_83886081);
-    goto _0;
-_0:
-    goto _2;
-_2:
-{
-    godot_variant *args[] = {p_args[0]};
-    godot_variant call_result = p_user_data->__vtable->methods[2](p_instance, p_method_data, p_user_data, 1, args);
-    api10->godot_variant_new_copy(&st_83886081, &call_result);
-    api10->godot_variant_destroy(&call_result);
-}
-    goto _exit;
-_exit:
-    api10->godot_variant_destroy(&st_83886081);
-    goto _cleanup;
-_cleanup:
-    //printf("Exit: Class_1__physics_process_func\n");
-    return __return_value;
+    api10->godot_variant_new_copy(&p_user_data->arr, p_value);
 }
 godot_variant Class_1__init_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
 {
@@ -96,7 +53,7 @@ godot_variant Class_1__init_func(godot_object *p_instance, void *p_method_data, 
             print_variant(&Class_1__init_local_const[0]);
         }
         {
-            uint8_t data[] = {2, 0, 0, 0, 3, 0, 0, 0};
+            uint8_t data[] = {2, 0, 0, 0, 2, 0, 0, 0};
             int bytesRead;
             gd2c10->variant_decode(&Class_1__init_local_const[1], data, 8, &bytesRead, true);
             print_variant(&Class_1__init_local_const[1]);
@@ -114,211 +71,219 @@ _0:
     goto _2;
 _2:
 {
-    int t = api10->godot_variant_as_int(&Class_1__init_local_const[1]);
-    godot_variant_call_error err;
-    godot_variant *args[] = {&Class_1__init_local_const[0]};
-    gd2c10->variant_convert(&st_83886080, t, (const godot_variant **)args, 1, &err);
+    godot_array arr;
+    api10->godot_array_new(&arr);
+    api10->godot_array_resize(&arr, 2);
+    api10->godot_array_set(&arr, 0, &Class_1__init_local_const[0]);
+    api10->godot_array_set(&arr, 1, &Class_1__init_local_const[1]);
+    api10->godot_variant_new_array(&st_83886080, &arr);
 }
-    {
-        godot_variant *args[] = {&Class_1__init_local_const[0], &Class_1__init_local_const[1]};
-        godot_variant_call_error err;
-        gd2c10->call_gdscript_builtin(57, (const godot_variant **)args, 2, &st_83886080, &err);
-    }
-    api10->godot_variant_new_copy(&p_user_data->direction, &st_83886080);
-    goto _exit;
-_exit:
+    api10->godot_variant_new_copy(&p_user_data->arr, &st_83886080);
+    goto _2147483646;
+_2147483646:
     api10->godot_variant_destroy(&st_83886080);
     goto _cleanup;
 _cleanup:
     //printf("Exit: Class_1__init_func\n");
     return __return_value;
 }
-godot_variant Class_1_do_actual_stuff_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+godot_variant Class_1_test_default_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
 {
-    //printf("Enter: Class_1_do_actual_stuff_func\n");
+    //printf("Enter: Class_1_test_default_func\n");
     struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
     godot_bool __flag;
     godot_variant_call_error __error;
     godot_variant __return_value;
     api10->godot_variant_new_nil(&__return_value);
-    if (0 == Class_1_do_actual_stuff_local_const_initialized)
+    if (0 == Class_1_test_default_local_const_initialized)
     {
         {
-            uint8_t data[] = {2, 0, 0, 0, 100, 0, 0, 0};
+            uint8_t data[] = {4, 0, 0, 0, 2, 0, 0, 0, 104, 105, 0, 0};
             int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[0], data, 8, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[0]);
+            gd2c10->variant_decode(&Class_1_test_default_local_const[0], data, 12, &bytesRead, true);
+            print_variant(&Class_1_test_default_local_const[0]);
+        }
+        Class_1_test_default_local_const_initialized = 1;
+    }
+    godot_variant st_83886081;
+    goto _entry;
+_entry:
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x10901fbe0>;
+    // DEFINE 67108864;
+    api10->godot_variant_new_nil(&st_83886081);
+    goto _0;
+_0:
+    goto _2;
+_2:
+    int defarg = 1 - p_num_args;
+    switch (defarg)
+    {
+    case 0:
+        goto _3;
+    default:
+        goto _9;
+    }
+_3:
+{
+    godot_variant *args[] = {p_args[0]};
+    godot_variant_call_error err;
+    gd2c10->call_gdscript_builtin(62, (const godot_variant **)args, 1, &st_83886081, &err);
+}
+    goto _2147483646;
+_2147483646:
+    api10->godot_variant_destroy(&st_83886081);
+    goto _cleanup;
+_9:
+    api10->godot_variant_new_copy(p_args[0], &Class_1_test_default_local_const[0]);
+    goto _3;
+_cleanup:
+    //printf("Exit: Class_1_test_default_func\n");
+    return __return_value;
+}
+godot_variant Class_1_diamond_dom_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+{
+    //printf("Enter: Class_1_diamond_dom_func\n");
+    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
+    godot_bool __flag;
+    godot_variant_call_error __error;
+    godot_variant __return_value;
+    api10->godot_variant_new_nil(&__return_value);
+    if (0 == Class_1_diamond_dom_local_const_initialized)
+    {
+        {
+            uint8_t data[] = {2, 0, 0, 0, 1, 0, 0, 0};
+            int bytesRead;
+            gd2c10->variant_decode(&Class_1_diamond_dom_local_const[0], data, 8, &bytesRead, true);
+            print_variant(&Class_1_diamond_dom_local_const[0]);
         }
         {
-            uint8_t data[] = {2, 0, 0, 0, 244, 1, 0, 0};
+            uint8_t data[] = {2, 0, 0, 0, 2, 0, 0, 0};
             int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[1], data, 8, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[1]);
-        }
-        {
-            uint8_t data[] = {2, 0, 0, 0, 255, 255, 255, 255};
-            int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[2], data, 8, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[2]);
+            gd2c10->variant_decode(&Class_1_diamond_dom_local_const[1], data, 8, &bytesRead, true);
+            print_variant(&Class_1_diamond_dom_local_const[1]);
         }
         {
             uint8_t data[] = {2, 0, 0, 0, 3, 0, 0, 0};
             int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[3], data, 8, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[3]);
+            gd2c10->variant_decode(&Class_1_diamond_dom_local_const[2], data, 8, &bytesRead, true);
+            print_variant(&Class_1_diamond_dom_local_const[2]);
         }
         {
-            uint8_t data[] = {2, 0, 0, 0, 1, 0, 0, 0};
+            uint8_t data[] = {2, 0, 0, 0, 4, 0, 0, 0};
             int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[4], data, 8, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[4]);
+            gd2c10->variant_decode(&Class_1_diamond_dom_local_const[3], data, 8, &bytesRead, true);
+            print_variant(&Class_1_diamond_dom_local_const[3]);
         }
         {
-            uint8_t data[] = {4, 0, 0, 0, 25, 0, 0, 0, 72, 101, 108, 108, 111, 33, 32, 84, 104, 101, 32, 118, 97, 108, 117, 101, 32, 111, 102, 32, 120, 32, 105, 115, 32, 0, 0, 0};
+            uint8_t data[] = {2, 0, 0, 0, 5, 0, 0, 0};
             int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[5], data, 36, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[5]);
+            gd2c10->variant_decode(&Class_1_diamond_dom_local_const[4], data, 8, &bytesRead, true);
+            print_variant(&Class_1_diamond_dom_local_const[4]);
         }
-        {
-            uint8_t data[] = {4, 0, 0, 0, 10, 0, 0, 0, 32, 97, 110, 100, 32, 121, 32, 105, 115, 32, 0, 0};
-            int bytesRead;
-            gd2c10->variant_decode(&Class_1_do_actual_stuff_local_const[6], data, 20, &bytesRead, true);
-            print_variant(&Class_1_do_actual_stuff_local_const[6]);
-        }
-        {
-            char data[] = {112, 111, 115, 105, 116, 105, 111, 110};
-            godot_string s;
-            api10->godot_string_new(&s);
-            api10->godot_string_parse_utf8_with_len(&s, data, 8);
-            api10->godot_string_name_new(&Class_1_do_actual_stuff_global_names[0], &s);
-            api10->godot_string_destroy(&s);
-        }
-        {
-            char data[] = {120};
-            godot_string s;
-            api10->godot_string_new(&s);
-            api10->godot_string_parse_utf8_with_len(&s, data, 1);
-            api10->godot_string_name_new(&Class_1_do_actual_stuff_global_names[1], &s);
-            api10->godot_string_destroy(&s);
-        }
-        {
-            char data[] = {121};
-            godot_string s;
-            api10->godot_string_new(&s);
-            api10->godot_string_parse_utf8_with_len(&s, data, 1);
-            api10->godot_string_name_new(&Class_1_do_actual_stuff_global_names[2], &s);
-            api10->godot_string_destroy(&s);
-        }
-        Class_1_do_actual_stuff_local_const_initialized = 1;
+        Class_1_diamond_dom_local_const_initialized = 1;
     }
     godot_variant st_83886081;
-    godot_variant st_83886083;
-    godot_variant st_83886084;
     godot_variant st_83886082;
     goto _entry;
 _entry:
-    // <gd2c.bytecode.ParameterGDScriptOp object at 0x107175550>;
+    // <gd2c.bytecode.ParameterGDScriptOp object at 0x108fb36d8>;
     // DEFINE 67108864;
     // DEFINE 67108865;
     // DEFINE 67108866;
     // DEFINE 67108867;
     // DEFINE 67108868;
-    // DEFINE 67108869;
-    // DEFINE 67108870;
     api10->godot_variant_new_nil(&st_83886081);
-    api10->godot_variant_new_nil(&st_83886083);
-    api10->godot_variant_new_nil(&st_83886084);
     api10->godot_variant_new_nil(&st_83886082);
     goto _0;
 _0:
     goto _2;
 _2:
-    gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->object_get_property(&st_83886083, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->variant_get_named(&st_83886083, &Class_1_do_actual_stuff_global_names[1], &st_83886083, &__flag);
-    api11->godot_variant_evaluate(8, &Class_1_do_actual_stuff_local_const[0], p_args[0], &st_83886084, &__flag);
-    api11->godot_variant_evaluate(8, &st_83886084, &p_user_data->direction, &st_83886084, &__flag);
-    api11->godot_variant_evaluate(6, &st_83886083, &st_83886084, &st_83886083, &__flag);
-    gd2c10->variant_set_named(&st_83886081, &Class_1_do_actual_stuff_global_names[1], &st_83886083, &__flag);
-    gd2c10->object_set_property(p_instance, &Class_1_do_actual_stuff_global_names[0], &st_83886081);
-    gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->object_get_property(&st_83886083, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->variant_get_named(&st_83886083, &Class_1_do_actual_stuff_global_names[2], &st_83886083, &__flag);
-    api11->godot_variant_evaluate(8, &Class_1_do_actual_stuff_local_const[0], p_args[0], &st_83886084, &__flag);
-    api11->godot_variant_evaluate(8, &st_83886084, &p_user_data->direction, &st_83886084, &__flag);
-    api11->godot_variant_evaluate(6, &st_83886083, &st_83886084, &st_83886083, &__flag);
-    gd2c10->variant_set_named(&st_83886081, &Class_1_do_actual_stuff_global_names[2], &st_83886083, &__flag);
-    gd2c10->object_set_property(p_instance, &Class_1_do_actual_stuff_global_names[0], &st_83886081);
-    gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->variant_get_named(&st_83886081, &Class_1_do_actual_stuff_global_names[1], &st_83886081, &__flag);
-    api11->godot_variant_evaluate(4, &st_83886081, &Class_1_do_actual_stuff_local_const[1], &st_83886081, &__flag);
+    api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_local_const[0], &st_83886082, &__flag);
+    api10->godot_variant_new_copy(p_args[0], &st_83886082);
+    api11->godot_variant_evaluate(0, p_args[0], &Class_1_diamond_dom_local_const[1], &st_83886081, &__flag);
     __flag = api10->godot_variant_as_bool(&st_83886081);
-    if (__flag)
-        goto _81;
-    goto _116;
-_81:
-{
-    int t = api10->godot_variant_as_int(&Class_1_do_actual_stuff_local_const[3]);
-    godot_variant_call_error err;
-    godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[2]};
-    gd2c10->variant_convert(&st_83886081, t, (const godot_variant **)args, 1, &err);
-}
-    {
-        godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[2], &Class_1_do_actual_stuff_local_const[3]};
-        godot_variant_call_error err;
-        gd2c10->call_gdscript_builtin(57, (const godot_variant **)args, 2, &st_83886081, &err);
-    }
-    api10->godot_variant_new_copy(&p_user_data->direction, &st_83886081);
-    goto _93;
-_93:
-    gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->variant_get_named(&st_83886081, &Class_1_do_actual_stuff_global_names[1], &st_83886081, &__flag);
-    gd2c10->object_get_property(&st_83886082, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->variant_get_named(&st_83886082, &Class_1_do_actual_stuff_global_names[2], &st_83886082, &__flag);
-    {
-        godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[5], &st_83886081, &Class_1_do_actual_stuff_local_const[6], &st_83886082};
-        godot_variant_call_error err;
-        gd2c10->call_gdscript_builtin(62, (const godot_variant **)args, 4, &st_83886081, &err);
-    }
-    goto _exit;
-_exit:
+    if (!__flag)
+        goto _39;
+    goto _18;
+_39:
+    api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_local_const[3], &st_83886082, &__flag);
+    api10->godot_variant_new_copy(p_args[0], &st_83886082);
+    goto _28;
+_28:
+    api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_local_const[4], &st_83886082, &__flag);
+    api10->godot_variant_new_copy(p_args[0], &st_83886082);
+    api10->godot_variant_new_copy(&__return_value, p_args[0]);
+    goto _2147483646;
+    goto _2147483646;
+_2147483646:
     api10->godot_variant_destroy(&st_83886081);
-    api10->godot_variant_destroy(&st_83886083);
-    api10->godot_variant_destroy(&st_83886084);
     api10->godot_variant_destroy(&st_83886082);
     goto _cleanup;
-_116:
-    gd2c10->object_get_property(&st_83886081, p_instance, &Class_1_do_actual_stuff_global_names[0]);
-    gd2c10->variant_get_named(&st_83886081, &Class_1_do_actual_stuff_global_names[1], &st_83886081, &__flag);
-    api11->godot_variant_evaluate(2, &st_83886081, &Class_1_do_actual_stuff_local_const[0], &st_83886081, &__flag);
-    __flag = api10->godot_variant_as_bool(&st_83886081);
-    if (__flag)
-        goto _131;
-    goto _93;
-_131:
-{
-    int t = api10->godot_variant_as_int(&Class_1_do_actual_stuff_local_const[3]);
-    godot_variant_call_error err;
-    godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[4]};
-    gd2c10->variant_convert(&st_83886081, t, (const godot_variant **)args, 1, &err);
-}
-    {
-        godot_variant *args[] = {&Class_1_do_actual_stuff_local_const[4], &Class_1_do_actual_stuff_local_const[3]};
-        godot_variant_call_error err;
-        gd2c10->call_gdscript_builtin(57, (const godot_variant **)args, 2, &st_83886081, &err);
-    }
-    api10->godot_variant_new_copy(&p_user_data->direction, &st_83886081);
-    goto _93;
+_18:
+    api11->godot_variant_evaluate(8, p_args[0], &Class_1_diamond_dom_local_const[2], &st_83886082, &__flag);
+    api10->godot_variant_new_copy(p_args[0], &st_83886082);
+    goto _28;
 _cleanup:
-    //printf("Exit: Class_1_do_actual_stuff_func\n");
+    //printf("Exit: Class_1_diamond_dom_func\n");
+    return __return_value;
+}
+godot_variant Class_1_test_iterate_func(godot_object *p_instance, void *p_method_data, void *_p_user_data, int p_num_args, godot_variant **p_args)
+{
+    //printf("Enter: Class_1_test_iterate_func\n");
+    struct Class_1_struct_t *p_user_data = (struct Class_1_struct_t *)_p_user_data;
+    godot_bool __flag;
+    godot_variant_call_error __error;
+    godot_variant __return_value;
+    api10->godot_variant_new_nil(&__return_value);
+    godot_variant st_83886080;
+    godot_variant st_83886081;
+    godot_variant st_83886082;
+    godot_variant st_83886083;
+    godot_variant st_100663296;
+    goto _entry;
+_entry:
+    api10->godot_variant_new_nil(&st_83886080);
+    api10->godot_variant_new_nil(&st_83886081);
+    api10->godot_variant_new_nil(&st_83886082);
+    api10->godot_variant_new_nil(&st_83886083);
+    goto _0;
+_0:
+    goto _2;
+_2:
+    api10->godot_variant_new_copy(&st_83886082, &p_user_data->arr);
+    // OPCODE_ITERATEBEGIN
+_10:
+    goto _12;
+_12:
+{
+    godot_variant *args[] = {&st_100663296};
+    godot_variant_call_error err;
+    gd2c10->call_gdscript_builtin(62, (const godot_variant **)args, 1, &st_83886083, &err);
+}
+    goto _19;
+_19:
+// OPCODE_ITERATE
+_24:
+    goto _26;
+_26:
+    goto _2147483646;
+_2147483646:
+    api10->godot_variant_destroy(&st_83886080);
+    api10->godot_variant_destroy(&st_83886081);
+    api10->godot_variant_destroy(&st_83886082);
+    api10->godot_variant_destroy(&st_83886083);
+    goto _cleanup;
+_cleanup:
+    //printf("Exit: Class_1_test_iterate_func\n");
     return __return_value;
 }
 void Class_1_vtable_init()
 {
-    vtable_init(&Class_1_vtable, &vtable, 2, 3, (void *)0, Class_1_vtable_methods, Class_1_vtable_method_names);
-    VTABLE_METHOD(Class_1_vtable, 0, "_physics_process", Class_1__physics_process_func, (void *)0);
-    VTABLE_METHOD(Class_1_vtable, 1, "_init", Class_1__init_func, (void *)0);
-    VTABLE_METHOD(Class_1_vtable, 2, "do_actual_stuff", Class_1_do_actual_stuff_func, (void *)0);
+    vtable_init(&Class_1_vtable, &vtable, 2, 4, (void *)0, Class_1_vtable_methods, Class_1_vtable_method_names);
+    VTABLE_METHOD(Class_1_vtable, 0, "_init", Class_1__init_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 1, "test_default", Class_1_test_default_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 2, "diamond_dom", Class_1_diamond_dom_func, (void *)0);
+    VTABLE_METHOD(Class_1_vtable, 3, "test_iterate", Class_1_test_iterate_func, (void *)0);
 }
 void GDN_EXPORT GD2C_gdnative_init(godot_gdnative_init_options *p_options)
 {
@@ -379,15 +344,17 @@ void GDN_EXPORT GD2C_gdnative_terminate(godot_gdnative_terminate_options *p_opti
         api10->godot_variant_destroy(&Class_1__init_local_const[0]);
         api10->godot_variant_destroy(&Class_1__init_local_const[1]);
     }
-    if (0 != Class_1_do_actual_stuff_local_const_initialized)
+    if (0 != Class_1_test_default_local_const_initialized)
     {
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[0]);
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[1]);
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[2]);
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[3]);
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[4]);
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[5]);
-        api10->godot_variant_destroy(&Class_1_do_actual_stuff_local_const[6]);
+        api10->godot_variant_destroy(&Class_1_test_default_local_const[0]);
+    }
+    if (0 != Class_1_diamond_dom_local_const_initialized)
+    {
+        api10->godot_variant_destroy(&Class_1_diamond_dom_local_const[0]);
+        api10->godot_variant_destroy(&Class_1_diamond_dom_local_const[1]);
+        api10->godot_variant_destroy(&Class_1_diamond_dom_local_const[2]);
+        api10->godot_variant_destroy(&Class_1_diamond_dom_local_const[3]);
+        api10->godot_variant_destroy(&Class_1_diamond_dom_local_const[4]);
     }
 }
 void GDN_EXPORT GD2C_nativescript_init(void *p_handle)
@@ -402,13 +369,6 @@ void GDN_EXPORT GD2C_nativescript_init(void *p_handle)
         nativescript10->godot_nativescript_register_class(p_handle, "Class_1", "Node2D", create, destroy);
     }
     {
-        //printf("  Register method: Class_1__physics_process_func\n");
-        godot_instance_method method = {NULL, NULL, NULL};
-        method.method = &Class_1__physics_process_func;
-        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
-        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "_physics_process", attributes, method);
-    }
-    {
         //printf("  Register method: Class_1__init_func\n");
         godot_instance_method method = {NULL, NULL, NULL};
         method.method = &Class_1__init_func;
@@ -416,20 +376,34 @@ void GDN_EXPORT GD2C_nativescript_init(void *p_handle)
         nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "_init", attributes, method);
     }
     {
-        //printf("  Register method: Class_1_do_actual_stuff_func\n");
+        //printf("  Register method: Class_1_test_default_func\n");
         godot_instance_method method = {NULL, NULL, NULL};
-        method.method = &Class_1_do_actual_stuff_func;
+        method.method = &Class_1_test_default_func;
         godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
-        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "do_actual_stuff", attributes, method);
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "test_default", attributes, method);
     }
     {
-        //printf("  Register member: direction\n");
+        //printf("  Register method: Class_1_diamond_dom_func\n");
+        godot_instance_method method = {NULL, NULL, NULL};
+        method.method = &Class_1_diamond_dom_func;
+        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "diamond_dom", attributes, method);
+    }
+    {
+        //printf("  Register method: Class_1_test_iterate_func\n");
+        godot_instance_method method = {NULL, NULL, NULL};
+        method.method = &Class_1_test_iterate_func;
+        godot_method_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
+        nativescript10->godot_nativescript_register_method(p_handle, "Class_1", "test_iterate", attributes, method);
+    }
+    {
+        //printf("  Register member: arr\n");
         godot_property_set_func setter = {NULL, NULL, NULL};
-        setter.set_func = &Class_1_set_direction;
+        setter.set_func = &Class_1_set_arr;
         godot_property_get_func getter = {NULL, NULL, NULL};
-        getter.get_func = &Class_1_get_direction;
+        getter.get_func = &Class_1_get_arr;
         godot_property_attributes attributes = {GODOT_METHOD_RPC_MODE_DISABLED};
-        nativescript10->godot_nativescript_register_property(p_handle, "Class_1", "direction", &attributes, setter, getter);
+        nativescript10->godot_nativescript_register_property(p_handle, "Class_1", "arr", &attributes, setter, getter);
     }
     Class_1_vtable_init();
     //printf("Exit: GD2C_nativescript_init\n");
