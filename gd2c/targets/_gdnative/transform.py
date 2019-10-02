@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import TYPE_CHECKING, Dict, List, Set, Tuple
 from gd2c.controlflow import Block
 from gd2c.bytecode import OPCODE_BREAKPOINT, OPCODE_LINE, GDScriptOp
 from gd2c.gdscriptclass import GDScriptFunction
 from gd2c.address import *
-
+    
 def insert_initializers_transformation(func: GDScriptFunction):
     """Inserts Initialize ops for all implicit stack variables."""
     from gd2c.bytecode import InitializeGDScriptOp
@@ -44,7 +44,7 @@ def insert_destructors_transformation(func: GDScriptFunction):
 
     for addr in all_addr:
         address = GDScriptAddress(addr)
-        if address.mode in (ADDRESS_MODE_STACK, ADDRESS_MODE_STACKVARIABLE):
+        if address.mode == ADDRESS_MODE_STACKVARIABLE or address.mode == ADDRESS_MODE_STACK:
             if address.offset >= func.len_parameters:
                 ops.append(DestroyGDScriptOp(addr))
 

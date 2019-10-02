@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Set, List, Iterable, Callable, Dict, Optional, ClassVar, TYPE_CHECKING, cast
 from gd2c.variant import VariantType
-from gd2c.address import GDScriptAddress, ADDRESS_MODE_STACKVARIABLE
+from gd2c.address import GDScriptAddress, ADDRESS_MODE_STACKVARIABLE, ADDRESS_MODE_STACK
 
 if TYPE_CHECKING:
     from gd2c.gdscriptclass import GDScriptFunction, GDScriptFunctionParameter
@@ -119,6 +119,14 @@ OperatorToken = {
     OPERATOR_MAX: "max"
 }
 
+def sv2stack(addr: int):
+    """Translate ADDRESS_MODE_STACKVARIABLE to ADDRESS_MODE_STACK"""
+    gdaddr = GDScriptAddress(addr)
+    if gdaddr.mode == ADDRESS_MODE_STACKVARIABLE:
+        return GDScriptAddress.create(ADDRESS_MODE_STACK, gdaddr.offset).address
+    else:
+        return addr
+
 class GDScriptOp:
     def __init__(self, opcode: int):
         self._opcode = opcode
@@ -195,9 +203,8 @@ class OperatorGDScriptOp(GDScriptOp):
         self.dest = dest
         self.operand1 = operand1
         self.operand2 = operand2
-        self._writes = set([dest])
-        self._reads = set([operand1, operand2])
-
+        self._writes = set([self.dest])
+        self._reads = set([self.operand1, self.operand2])
         self.ssa_dest = None
         self.ssa_operand1 = None
         self.ssa_operand2 = None
@@ -225,9 +232,9 @@ class OperatorGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'OperatorGDScriptOp':
         return OperatorGDScriptOp(
             bytecode[index + 1],
-            bytecode[index + 2],
-            bytecode[index + 3],
-            bytecode[index + 4])
+            sv2stack(bytecode[index + 2]),
+            sv2stack(bytecode[index + 3]),
+            sv2stack(bytecode[index + 4]))
 
 class SetGDScriptOp(GDScriptOp):
     array_address: int
@@ -242,8 +249,8 @@ class SetGDScriptOp(GDScriptOp):
         self.array_address = array_address
         self.index_address = index_address
         self.source_address = source_address
-        self._reads = set([source_address, array_address, index_address])
-        self._writes = set([array_address])
+        self._reads = set([self.source_address, self.array_address, self.index_address])
+        self._writes = set([self.array_address])
         self.ssa_array = None
         self.ssa_index = None
         self.ssa_source = None
@@ -261,9 +268,9 @@ class SetGDScriptOp(GDScriptOp):
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'SetGDScriptOp':
         return SetGDScriptOp(
-            bytecode[index + 1],
-            bytecode[index + 2],
-            bytecode[index + 3])
+            sv2stack(bytecode[index + 1]),
+            sv2stack(bytecode[index + 2]),
+            sv2stack(bytecode[index + 3]))
 
 class GetGDScriptOp(GDScriptOp):
     dest: int
@@ -278,8 +285,8 @@ class GetGDScriptOp(GDScriptOp):
         self.dest = dest
         self.array_address = array_address
         self.index_address = index_address
-        self._writes = set([dest])
-        self._reads = set([array_address, index_address])
+        self._writes = set([self.dest])
+        self._reads = set([self.array_address, self.index_address])
         self.ssa_dest = None
         self.ssa_array = None
         self.ssa_index = None
@@ -294,9 +301,9 @@ class GetGDScriptOp(GDScriptOp):
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'GetGDScriptOp':
         return GetGDScriptOp(
-            bytecode[index + 3],
-            bytecode[index + 1],
-            bytecode[index + 2])
+            sv2stack(bytecode[index + 3]),
+            sv2stack(bytecode[index + 1]),
+            sv2stack(bytecode[index + 2]))
 
 class SetNamedGDScriptOp(GDScriptOp):
     dest: int
@@ -310,8 +317,8 @@ class SetNamedGDScriptOp(GDScriptOp):
         self.dest = dest
         self.name_index = name_index
         self.source = source
-        self._writes = set([dest])
-        self._reads = set([source])
+        self._writes = set([self.dest])
+        self._reads = set([self.source])
         self.ssa_dest = None
         self.ssa_source = None
 
@@ -325,9 +332,9 @@ class SetNamedGDScriptOp(GDScriptOp):
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'SetNamedGDScriptOp':
         return SetNamedGDScriptOp(
-            bytecode[index + 1],
+            sv2stack(bytecode[index + 1]),
             bytecode[index + 2],
-            bytecode[index + 3])
+            sv2stack(bytecode[index + 3]))
 
 class GetNamedGDScriptOp(GDScriptOp):
     dest: int
@@ -341,8 +348,8 @@ class GetNamedGDScriptOp(GDScriptOp):
         self.dest = dest
         self.name_index = name_index
         self.source = source
-        self._writes = set([dest])
-        self._reads = set([source])
+        self._writes = set([self.dest])
+        self._reads = set([self.source])
         self.ssa_dest = None
         self.ssa_source = None
 
@@ -356,8 +363,8 @@ class GetNamedGDScriptOp(GDScriptOp):
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'GetNamedGDScriptOp':
         return GetNamedGDScriptOp(
-            bytecode[index + 3],
-            bytecode[index + 1],
+            sv2stack(bytecode[index + 3]),
+            sv2stack(bytecode[index + 1]),
             bytecode[index + 2])
 
 class SetMemberGDScriptOp(GDScriptOp):
@@ -383,7 +390,7 @@ class SetMemberGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'SetMemberGDScriptOp':
         return SetMemberGDScriptOp(
             bytecode[index + 1],
-            bytecode[index + 2])
+            sv2stack(bytecode[index + 2]))
 
 class GetMemberGDScriptOp(GDScriptOp):
     dest: int
@@ -407,7 +414,7 @@ class GetMemberGDScriptOp(GDScriptOp):
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'GetMemberGDScriptOp':
         return GetMemberGDScriptOp(
-            bytecode[index + 2],
+            sv2stack(bytecode[index + 2]),
             bytecode[index + 1])
 
 class AssignGDScriptOp(GDScriptOp):
@@ -444,8 +451,8 @@ class AssignGDScriptOp(GDScriptOp):
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'AssignGDScriptOp':
         return AssignGDScriptOp(
-            bytecode[index + 1],
-            bytecode[index + 2])
+            sv2stack(bytecode[index + 1]),
+            sv2stack(bytecode[index + 2]))
 
 class AssignTrueGDScriptOp(GDScriptOp):
     dest: int
@@ -466,7 +473,7 @@ class AssignTrueGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'AssignTrueGDScriptOp':
-        return AssignTrueGDScriptOp(bytecode[index + 1])
+        return AssignTrueGDScriptOp(sv2stack(bytecode[index + 1]))
 
 class AssignFalseGDScriptOp(GDScriptOp):
     dest: int
@@ -486,7 +493,7 @@ class AssignFalseGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'AssignFalseGDScriptOp':
-        return AssignFalseGDScriptOp(bytecode[index + 1])
+        return AssignFalseGDScriptOp(sv2stack(bytecode[index + 1]))
 
 class AssignTypedBuiltinGDScriptOp(GDScriptOp):
     dest: int
@@ -515,8 +522,8 @@ class AssignTypedBuiltinGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'AssignTypedBuiltinGDScriptOp':
         return AssignTypedBuiltinGDScriptOp(
             bytecode[index + 1],
-            bytecode[index + 2],
-            bytecode[index + 3])
+            sv2stack(bytecode[index + 2]),
+            sv2stack(bytecode[index + 3]))
 
 class ReturnGDScriptOp(GDScriptOp):
     source: int
@@ -537,7 +544,7 @@ class ReturnGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'ReturnGDScriptOp':
-        return ReturnGDScriptOp(bytecode[index + 1])
+        return ReturnGDScriptOp(sv2stack(bytecode[index + 1]))
 
     @property
     def is_branch(self) -> bool:
@@ -575,8 +582,8 @@ class ConstructGDScriptOp(GDScriptOp):
         return ConstructGDScriptOp(
             bytecode[index + 1],
             count,
-            bytecode[index + 3 : index + 3 + count],
-            bytecode[index + 3 + count])
+            [sv2stack(a) for a in bytecode[index + 3 : index + 3 + count]],
+            sv2stack(bytecode[index + 3 + count]))
 
 class ConstructArrayGDScriptOp(GDScriptOp):
     item_count: int
@@ -606,9 +613,9 @@ class ConstructArrayGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'ConstructArrayGDScriptOp':
         count = bytecode[index + 1]
         return ConstructArrayGDScriptOp(
-            bytecode[index + 2 + count],
+            sv2stack(bytecode[index + 2 + count]),
             count,
-            bytecode[index + 2 : index + 2 + count])
+            [sv2stack(a) for a in bytecode[index + 2 : index + 2 + count]])
 
 class ConstructDictionaryGDScriptOp(GDScriptOp):
     item_count: int
@@ -645,11 +652,11 @@ class ConstructDictionaryGDScriptOp(GDScriptOp):
         values = []
 
         for i in range(count):
-            keys.append(bytecode[2 + i * 2 + 0])
-            values.append(bytecode[2 + i * 2 + 1])
+            keys.append(sv2stack(bytecode[2 + i * 2 + 0]))
+            values.append(sv2stack(bytecode[2 + i * 2 + 1]))
 
         return ConstructDictionaryGDScriptOp(
-            bytecode[2 + count * 2],
+            sv2stack(bytecode[2 + count * 2]),
             count,
             keys,
             values)
@@ -688,11 +695,11 @@ class CallReturnGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'CallReturnGDScriptOp':
         count = bytecode[index + 1]
         return CallReturnGDScriptOp(
-            bytecode[index + 4 + count],
-            bytecode[index + 2],
+            sv2stack(bytecode[index + 4 + count]),
+            sv2stack(bytecode[index + 2]),
             count,
             bytecode[index + 3],
-            bytecode[index + 4 : index + 4 + count])
+            [sv2stack(a) for a in bytecode[index + 4 : index + 4 + count]])
 
 class CallGDScriptOp(GDScriptOp):
     arg_count: int
@@ -720,14 +727,13 @@ class CallGDScriptOp(GDScriptOp):
         return 5 + self.arg_count
 
     @staticmethod
-    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'CallReturnGDScriptOp':
+    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'CallGDScriptOp':
         count = bytecode[index + 1]
-        return CallReturnGDScriptOp(
-            bytecode[index + 4 + count],
-            bytecode[index + 2],
+        return CallGDScriptOp(
+            sv2stack(bytecode[index + 2]),
             count,
             bytecode[index + 3],
-            bytecode[index + 4 : index + 4 + count])
+            [sv2stack(a) for a in bytecode[index + 4 : index + 4 + count]])
 
 class CallSelfBaseGDScriptOp(GDScriptOp):
     dest: int
@@ -756,10 +762,10 @@ class CallSelfBaseGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'CallSelfBaseGDScriptOp':
         count = bytecode[index + 1]
         return CallSelfBaseGDScriptOp(
-            bytecode[index + 3 + count],
+            sv2stack(bytecode[index + 3 + count]),
             count,
             bytecode[index + 1],
-            bytecode[index + 3 : index + 3 + count])
+            [sv2stack(a) for a in bytecode[index + 3 : index + 3 + count]])
 
 class CallBuiltinGDScriptOp(GDScriptOp):
     dest: int
@@ -791,8 +797,8 @@ class CallBuiltinGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'CallBuiltinGDScriptOp':
         fid = bytecode[index + 1]
         count = bytecode[index + 2]
-        args = bytecode[index + 3 : index + 3 + count]
-        dest = bytecode[index + 3 + count]
+        args = [sv2stack(a) for a in bytecode[index + 3 : index + 3 + count]]
+        dest = sv2stack(bytecode[index + 3 + count])
         return CallBuiltinGDScriptOp(dest, fid, count, args)
 
 class JumpGDScriptOp(GDScriptOp):
@@ -849,7 +855,7 @@ class JumpIfGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpIfGDScriptOp':
-        return JumpIfGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
+        return JumpIfGDScriptOp(bytecode[index + 2], sv2stack(bytecode[index + 1]), index + 3)
 
     @property
     def is_branch(self) -> bool:
@@ -878,7 +884,7 @@ class JumpIfNotGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'JumpIfNotGDScriptOp':
-        return JumpIfNotGDScriptOp(bytecode[index + 2], bytecode[index + 1], index + 3)
+        return JumpIfNotGDScriptOp(bytecode[index + 2], sv2stack(bytecode[index + 1]), index + 3)
 
     @property
     def is_branch(self) -> bool:
@@ -983,10 +989,10 @@ class IterateBeginGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'IterateBeginGDScriptOp':
-        counter = bytecode[index + 1]
-        container = bytecode[index + 2]
+        counter = sv2stack(bytecode[index + 1])
+        container = sv2stack(bytecode[index + 2])
         branch = bytecode[index + 3]
-        iterator = bytecode[index + 4]
+        iterator = sv2stack(bytecode[index + 4])
         fallthrough = index + 5
         return IterateBeginGDScriptOp(counter, container, branch, fallthrough, iterator)
 
@@ -1027,10 +1033,10 @@ class IterateGDScriptOp(GDScriptOp):
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'IterateGDScriptOp':
-        counter = bytecode[index + 1]
-        container = bytecode[index + 2]
+        counter = sv2stack(bytecode[index + 1])
+        container = sv2stack(bytecode[index + 2])
         branch = bytecode[index + 3]
-        iterator = bytecode[index + 4]
+        iterator = sv2stack(bytecode[index + 4])
         fallthrough = index + 5
         return IterateGDScriptOp(counter, container, branch, fallthrough, iterator)    
 
@@ -1050,7 +1056,7 @@ class ParameterGDScriptOp(PseudoGDScriptOp):
     def __init__(self, parameter: GDScriptFunctionParameter):
         super().__init__(OPCODE_PARAMETER)
         self.parameter = parameter
-        self._writes = set([GDScriptAddress.calc_address(ADDRESS_MODE_STACKVARIABLE, parameter.index)])
+        self._writes = set([GDScriptAddress.calc_address(ADDRESS_MODE_STACK, parameter.index)])
 
 class DefineGDScriptOp(PseudoGDScriptOp):
     address: int

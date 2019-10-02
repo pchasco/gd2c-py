@@ -209,6 +209,31 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         nonlocal FC
         call_base = isinstance(op, CallSelfBaseGDScriptOp)
 
+        if call_base:
+            receiver = "p_user_data->__self"
+            try_vtable = True
+        else:
+            receiver_address = GDScriptAddress(op.receiver) # type: ignore
+            receiver = FC.variables[receiver_address.address].address_of()
+            try_vtable = receiver_address.mode == ADDRESS_MODE_SELF
+
+        if try_vtable:
+            method_name = FC.func.global_names[op.name_index]
+            ctx = FC.class_context.base_context if call_base else FC.class_context
+            if ctx is None:
+                if method_name == "_init":
+                    file.write(f"""\
+                        //
+                        // Call to base _init is always ignored
+                        //
+                        
+                        """)
+                    return
+                else:
+                    assert ctx
+
+            vtable_entry = ctx.get_member_vtable_entry(method_name)
+
         # use local scope for args[]
         file.write("{\n")
 
@@ -222,20 +247,6 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             args = "args"        
         else:
             args = "(void*)0"
-
-        if call_base:
-            receiver = "p_user_data->__self"
-            try_vtable = True
-        else:
-            receiver_address = GDScriptAddress(op.receiver) # type: ignore
-            receiver = FC.variables[receiver_address.address].address_of()
-            try_vtable = receiver_address.mode == ADDRESS_MODE_SELF
-
-        if try_vtable:
-            method_name = FC.func.global_names[op.name_index]
-            ctx = FC.class_context.base_context if call_base else FC.class_context
-            assert ctx
-            vtable_entry = ctx.get_member_vtable_entry(method_name)
 
         # if method is in vtable we can call with function pointer,
         # otherwise we will have to call with godot_variant_call
@@ -377,7 +388,41 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             api10->godot_variant_new_copy({FC.variables[op.dest].address_of()}, {FC.variables[op.source].address_of()});
             """)
 
-    #file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
+    def opcode_iteratebegin(op: IterateBeginGDScriptOp):
+        nonlocal FC
+        assert FC.func
+        assert FC.func.cfg
+        branch = FC.func.cfg.node_from_address(op.branch)
+        assert branch
+        fallthrough = FC.func.cfg.node_from_address(op.fallthrough)
+        assert fallthrough
+        file.write(f"""\
+            if(!gd2c10->variant_iter_init({FC.variables[op.container].address_of()}, {FC.variables[op.counter].address_of()}, &__flag)) {{
+                goto {branch.label};
+            }} else {{
+                gd2c10->variant_iter_get({FC.variables[op.container].address_of()}, {FC.variables[op.counter].address_of()}, {FC.variables[op.iterator].address_of()}, &__flag);
+                goto {fallthrough.label};
+            }}        
+        """)
+
+    def opcode_iterate(op: IterateGDScriptOp):
+        nonlocal FC
+        assert FC.func
+        assert FC.func.cfg
+        branch = FC.func.cfg.node_from_address(op.branch)
+        assert branch
+        fallthrough = FC.func.cfg.node_from_address(op.fallthrough)
+        assert fallthrough
+        file.write(f"""\
+            if(!gd2c10->variant_iter_next({FC.variables[op.container].address_of()}, {FC.variables[op.counter].address_of()}, &__flag)) {{
+                goto {branch.label};
+            }} else {{
+                gd2c10->variant_iter_get({FC.variables[op.container].address_of()}, {FC.variables[op.counter].address_of()}, {FC.variables[op.iterator].address_of()}, &__flag);
+                goto {fallthrough.label};
+            }}        
+        """)
+
+    # file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
@@ -431,22 +476,22 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         opcode_callbuiltin(op) # type: ignore
     elif op.opcode == OPCODE_ASSIGNTYPEDBUILTIN:
         opcode_assigntypedbuiltin(op) # type: ignore
+    elif op.opcode == OPCODE_ITERATEBEGIN:
+        opcode_iteratebegin(op) # type: ignore
+    elif op.opcode == OPCODE_ITERATE:
+        opcode_iterate(op) # type: ignore
 
     elif op.opcode == OPCODE_CONSTRUCT:
         file.write(f"""// OPCODE_CONSTRUCT\n""")
     elif op.opcode == OPCODE_CONSTRUCTDICTIONARY:
         file.write(f"""// OPCODE_CONSTRUCTDICTIONARY\n""")
-    elif op.opcode == OPCODE_ITERATEBEGIN:
-        file.write(f"""// OPCODE_ITERATEBEGIN\n""")
-    elif op.opcode == OPCODE_ITERATE:
-        file.write(f"""// OPCODE_ITERATE\n""")
+
     elif op.opcode == OPCODE_YIELD:
         file.write(f"""// OPCODE_YIELD\n""")
     elif op.opcode == OPCODE_YIELDSIGNAL:
         file.write(f"""// OPCODE_YIELDSIGNAL\n""")
     elif op.opcode == OPCODE_YIELDRESUME:
         file.write(f"""// OPCODE_YIELDRESUME\n""")
-
     elif op.opcode == OPCODE_EXTENDSTEST:
         file.write(f"""// OPCODE_EXTENDSTEST\n""")
     elif op.opcode == OPCODE_ISBUILTIN:

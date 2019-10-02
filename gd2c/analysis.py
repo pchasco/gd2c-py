@@ -102,7 +102,7 @@ def annotate_assigned_parameters(func: GDScriptFunction) -> None:
                     # callee may write to it.
                     for i, addr in enumerate(args):
                         pa = GDScriptAddress(addr)
-                        if pa.mode == ADDRESS_MODE_STACK or pa.mode == ADDRESS_MODE_STACKVARIABLE and pa.offset < func.len_parameters:
+                        if pa.offset < func.len_parameters and pa.mode in (ADDRESS_MODE_STACKVARIABLE, ADDRESS_MODE_STACK):
                             tp = callee.parameter(i)
                             if not tp.is_assigned:
                                 func.parameter(pa.offset).is_assigned = True  

@@ -18,17 +18,17 @@ class Variable:
 
         self._identifier = ""
 
-        if self.address.mode == ADDRESS_MODE_STACK or self.address.mode == ADDRESS_MODE_STACKVARIABLE:
+        if self.address.mode in (ADDRESS_MODE_STACKVARIABLE, ADDRESS_MODE_STACK):
             if self.address.offset >= func_context.func.len_parameters:
-                self.identifier = f"st_{self.address.address}"
+                self.identifier = f"st_{self.address.offset}"
 
     def define(self) -> str:
         assert self.identifier
         return f"godot_variant {self.identifier};\n"    
 
     def needs_definition(self) -> bool:
-        return self.address.mode in (ADDRESS_MODE_STACK, ADDRESS_MODE_STACKVARIABLE) \
-            and self.address.offset >= self.func_context.func.len_parameters
+        return self.address.offset >= self.func_context.func.len_parameters \
+            and self.address.mode in (ADDRESS_MODE_STACKVARIABLE, ADDRESS_MODE_STACK)
 
     def value(self) -> str:
         if self.address.mode == ADDRESS_MODE_SELF:
@@ -39,13 +39,13 @@ class Variable:
             return f"p_user_data->{self.class_context.get_member_context(self.address.offset).member_identifier}"
         elif self.address.mode == ADDRESS_MODE_CLASSCONSTANT:
             pass
-        elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT:
-            return f"{self.func_context.local_constants_array_identifier}[{self.address.offset}]"
-        elif self.address.mode == ADDRESS_MODE_STACK or self.address.mode == ADDRESS_MODE_STACKVARIABLE:
+        elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT or self.address.mode == ADDRESS_MODE_STACK:
             if self.address.offset < self.func_context.func.len_parameters:
                 return f"*p_args[{self.address.offset}]"
             else:
                 return self.identifier
+        elif self.address.mode == ADDRESS_MODE_STACK:
+            return self.identifier
         elif self.address.mode == ADDRESS_MODE_GLOBAL:
             pass
         elif self.address.mode == ADDRESS_MODE_NAMEDGLOBAL:
@@ -72,7 +72,7 @@ class Variable:
             pass
         elif self.address.mode == ADDRESS_MODE_LOCALCONSTANT:
             return f"&{self.func_context.local_constants_array_identifier}[{self.address.offset}]"
-        elif self.address.mode == ADDRESS_MODE_STACK or self.address.mode == ADDRESS_MODE_STACKVARIABLE:
+        elif self.address.mode == ADDRESS_MODE_STACKVARIABLE or self.address.mode == ADDRESS_MODE_STACK:
             if self.address.offset < self.func_context.func.len_parameters:
                 return f"p_args[{self.address.offset}]"
             else:
