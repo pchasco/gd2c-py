@@ -188,6 +188,32 @@ class NoopGDScriptOp(GDScriptOp):
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'NoopGDScriptOp':
         return NoopGDScriptOp()
 
+class ExtendsTestGDScriptOp(GDScriptOp):
+    def __init__(self, a: int, b: int, dest: int):
+        super().__init__(OPCODE_EXTENDSTEST)
+        self.a = a
+        self.b = b
+        self.dest = dest
+        self.ssa_a = None
+        self.ssa_b = None
+        self.ssa_dest = None
+        self._reads = set([a, b])
+        self._writes = set([dest])
+
+    def __str__(self):
+        return "EXTENDS_TEST"
+
+    @property
+    def stride(self) -> int:
+        return 4
+
+    @staticmethod
+    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'ExtendsTestGDScriptOp':
+        return ExtendsTestGDScriptOp(
+            sv2stack(bytecode[index + 1]), 
+            sv2stack(bytecode[index + 2]), 
+            sv2stack(bytecode[index + 3]))
+
 class OperatorGDScriptOp(GDScriptOp):
     op: int
     dest: int
@@ -354,7 +380,7 @@ class GetNamedGDScriptOp(GDScriptOp):
         self.ssa_source = None
 
     def __str__(self):
-        return f"GETNAMED {self.dest} = {self.array_address}.global_names[{self.index_address}]"
+        return f"GETNAMED {self.dest} = {self.source}.global_names[{self.name_index}]"
 
     @property
     def stride(self) -> int:
@@ -643,7 +669,7 @@ class ConstructDictionaryGDScriptOp(GDScriptOp):
 
     @property
     def stride(self) -> int:
-        return 3 + self.item_count
+        return 3 + self.item_count * 2
 
     @staticmethod
     def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'ConstructDictionaryGDScriptOp':
@@ -652,11 +678,11 @@ class ConstructDictionaryGDScriptOp(GDScriptOp):
         values = []
 
         for i in range(count):
-            keys.append(sv2stack(bytecode[2 + i * 2 + 0]))
-            values.append(sv2stack(bytecode[2 + i * 2 + 1]))
+            keys.append(sv2stack(bytecode[index + 2 + i * 2 + 0]))
+            values.append(sv2stack(bytecode[index + 2 + i * 2 + 1]))
 
         return ConstructDictionaryGDScriptOp(
-            sv2stack(bytecode[2 + count * 2]),
+            sv2stack(bytecode[index + 2 + count * 2]),
             count,
             keys,
             values)
@@ -1129,7 +1155,7 @@ class PhiGDScriptOp(PseudoGDScriptOp):
 
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,
-    OPCODE_EXTENDSTEST: None,
+    OPCODE_EXTENDSTEST: ExtendsTestGDScriptOp.extract,
     OPCODE_ISBUILTIN: None,
     OPCODE_SET: SetGDScriptOp.extract,
     OPCODE_GET: GetGDScriptOp.extract,

@@ -28,7 +28,7 @@ class JsonGDScriptLoader:
         
         for index, entry in enumerate(data["global_constants"]):
             glob = GDScriptGlobal(index, entry["name"], entry["original_name"], entry["type_code"], entry["kind_code"], entry["value"], entry["source"])
-            cls.add_global(glob)
+            cls.globals[glob.index] = glob
 
         for signal in data["signals"]:
             cls.add_signal(signal)

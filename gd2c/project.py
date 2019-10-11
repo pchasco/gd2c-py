@@ -13,7 +13,7 @@ class Project:
         self._classes_by_resource_path: Dict[str, GDScriptClass] = {}
         self._classes_by_name: Dict[str, GDScriptClass] = {}
         self._classes_by_type_id: Dict[int, GDScriptClass] = {}
-        self._export_prefix = "GD2C"
+        self._export_prefix = "godot"
 
     @property
     def export_prefix(self) -> str:

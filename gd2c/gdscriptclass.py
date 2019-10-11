@@ -9,14 +9,34 @@ if TYPE_CHECKING:
     from controlflow import ControlFlowGraph
 
 class GDScriptGlobal:
-    def __init__(self, index: int, name: str, original_name: str, vtype: int, kind_code: int, value: str, source: str):
+    SOURCE_CONSTANT = 1
+    SOURCE_HARDCODED = 2
+    SOURCE_CLASSDB = 3
+    SOURCE_SINGLETON = 4
+
+    def __init__(self, index: int, name: str, original_name: str, vtype: int, kind_code: int, value: str, source: Union[str, int]):
         self.index = index
         self.original_name = original_name
         self.vtype = VariantType.get(vtype)
         self.kind_code = kind_code
         self.value = value
-        self.source = source
         self.address = GDScriptAddress.create(ADDRESS_MODE_GLOBAL, index)
+        if isinstance(source, str):
+            if source == "GlobalConstants":
+                self.source = GDScriptGlobal.SOURCE_CONSTANT
+            elif source == "hard-coded":
+                self.source = GDScriptGlobal.SOURCE_HARDCODED
+            elif source == "ClassDB":
+                self.source = GDScriptGlobal.SOURCE_CLASSDB
+            elif source == "Singleton":
+                self.source = GDScriptGlobal.SOURCE_SINGLETON
+        elif isinstance(source, int):
+            assert source in ( \
+                GDScriptGlobal.SOURCE_CONSTANT, \
+                GDScriptGlobal.SOURCE_HARDCODED, \
+                GDScriptGlobal.SOURCE_CLASSDB, \
+                GDScriptGlobal.SOURCE_SINGLETON)
+            self.source = source
 
 class GDScriptFunctionConstant:
     def __init__(self, index: int, vtype: Union[VariantType, str, int], data: bytes, declaration: str):
@@ -55,7 +75,6 @@ class GDScriptFunctionParameter:
         self.index = index
         self.is_assigned = False
         self.address = GDScriptAddress.create(ADDRESS_MODE_STACKVARIABLE, index)
-
 
 class GDScriptFunction:
     name: str
@@ -192,7 +211,7 @@ class GDScriptClass:
     _members: Dict[str, GDScriptMember]
     _signals: Set[str]
     _functions: Dict[str, GDScriptFunction]
-    _globals: Dict[int, GDScriptGlobal]
+    globals: Dict[int, GDScriptGlobal]
     _ctor: Optional[GDScriptFunction] 
     _dtor: Optional[GDScriptFunction] 
 
@@ -207,7 +226,7 @@ class GDScriptClass:
         self._members = {}
         self._signals = set()
         self._functions = {}
-        self._globals = {}
+        self.globals = {}
         self._ctor = None
         self._dtor = None
 
@@ -248,17 +267,6 @@ class GDScriptClass:
         else:
             self._base_resource_path = None
 
-    def add_global(self, glob: GDScriptGlobal):
-        self._globals[glob.index] = glob
-    
-    @property
-    def len_globals(self) -> int:
-        return len(self._globals)
-
-    def globals(self) -> Iterable[GDScriptGlobal]:
-        for glob in self._globals.values():
-            yield glob
-
     def add_function(self, func: GDScriptFunction):
         self._functions[func.name] = func
 
@@ -282,6 +290,10 @@ class GDScriptClass:
     def constants(self) -> Iterable[GDScriptClassConstant]:
         for const in self._constants.values():
             yield const
+
+    @property
+    def has_constants(self) -> bool:
+        return len(self._constants) > 0
 
     @property
     def len_constants(self) -> int:

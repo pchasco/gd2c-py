@@ -3,8 +3,9 @@ from typing import Union, List, Set, FrozenSet, Optional, Dict, IO, Callable
 from pathlib import Path
 from gd2c.project import Project
 from gd2c.target import Target
-from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember
-from gd2c.targets._gdnative.context import ClassContext, FunctionContext
+from gd2c.gdscriptclass import GDScriptClass, GDScriptFunction, GDScriptMember, GDScriptGlobal
+from gd2c.targets._gdnative.context import GlobalContext, ClassContext, FunctionContext
+from gd2c.variant import VariantType
 
 from gd2c import controlflow
 
@@ -35,6 +36,7 @@ class GDNativeTarget(Target):
 class GDNativeCodeGen:
     def __init__(self, project: Project, output_path: Union[str, Path]):
         self.project = project
+        self.global_context = GlobalContext()
         self.class_contexts: Dict[int, ClassContext] = {}
         self.output_path = Path(output_path)
 
@@ -56,8 +58,10 @@ class GDNativeCodeGen:
     def _initialize_contexts(self):
         self.class_contexts = {}
         for cls in self.project.iter_classes_in_dependency_order():
-            context = ClassContext(cls, self.class_contexts.get(cls.base.type_id, None) if cls.base else None)
+            context = ClassContext(cls, self.global_context, self.class_contexts.get(cls.base.type_id, None) if cls.base else None)
             self.class_contexts[cls.type_id] = context
+
+        self.global_context.initialize_globals(next(iter(self.class_contexts.values())).cls.globals)
 
     def _transpile_header_file(self):
         p = Path(self._output_path, "godotproject.h")
@@ -73,6 +77,18 @@ class GDNativeCodeGen:
                     api10->godot_print(&s);
                     api10->godot_string_destroy(&s);
                 }}
+
+                void register_classdb_global(godot_variant *p_variant, const char *p_name, int p_name_len) {{
+                    godot_string s;
+                    godot_string_name sn;
+                    api10->godot_string_new(&s);
+                    api10->godot_string_parse_utf8_with_len(&s, p_name, p_name_len);
+                    api10->godot_string_name_new(&sn, &s);
+                    gd2c10->get_gdscript_nativeclass(p_variant, &sn);
+                    api10->godot_string_destroy(&s);
+                    api10->godot_string_name_destroy(&sn);
+                }}
+
             """)
 
             for cls in self.project.iter_classes_in_dependency_order():
@@ -84,7 +100,10 @@ class GDNativeCodeGen:
                     if func.has_constants:
                         func_context = class_context.get_function_context(func)
                         if len(func.global_names) > 0:
-                            header.write(f"""godot_string_name {func_context.global_names_identifier}[{len(func.global_names)}];\n""")
+                            header.write(f"""\
+                                godot_string_name {func_context.global_names_identifier}[{len(func.global_names)}];
+                                godot_string {func_context.global_strings_identifier}[{len(func.global_names)}];
+                                """)
 
                         if func.len_constants:
                             header.write(f"""godot_variant {func_context.local_constants_array_identifier}[{func.len_constants}];\n""")
@@ -115,6 +134,10 @@ class GDNativeCodeGen:
             writer.write(f"""\
                 #include "gd2c.h"
                 #include "godotproject.h"
+                #include "math.h"
+
+                {self.global_context.define()}
+
             """)
 
             for cls in self.project.iter_classes_in_dependency_order():
@@ -260,7 +283,58 @@ class GDNativeCodeGen:
 
         self.project.visit_classes_in_dependency_order(visitor)
 
+        self._transpile_global_constants_array_initialization(impl)
+        self._transpile_class_constants_initialization(impl)
+
         impl.write(f"""\
                 //printf("Exit: {self.project.export_prefix}_nativescript_init\\n");
             }}
         """)
+
+    def _transpile_global_constants_array_initialization(self, impl: IO) -> None:
+        for i in range(0, len(self.global_context.globals) + 1):
+            if i in self.global_context.globals:
+                cnst = self.global_context.globals[i]
+                if cnst.source in (GDScriptGlobal.SOURCE_CONSTANT, GDScriptGlobal.SOURCE_HARDCODED):
+                    if cnst.vtype == VariantType.INT:
+                        impl.write(f"api10->godot_variant_new_int({self.global_context.address_of_expression(cnst.index)}, {cnst.value});\n")
+                    elif cnst.vtype == VariantType.REAL:
+                        literal = cnst.value
+                        if cnst.value == "inf":
+                            literal = "INFINITY"
+                        elif cnst.value == "nan":
+                            literal = "NAN"
+
+                        impl.write(f"api10->godot_variant_new_real({self.global_context.address_of_expression(cnst.index)}, {literal});\n")
+                elif cnst.source == GDScriptGlobal.SOURCE_SINGLETON:
+                    impl.write(f"""\
+                        {{
+                            godot_object *singleton = api10->godot_global_get_singleton("{cnst.original_name}");
+                            api10->godot_variant_new_object({self.global_context.address_of_expression(cnst.index)}, singleton);
+                        }}
+                        """)
+                elif cnst.source == GDScriptGlobal.SOURCE_CLASSDB:
+                    utf8 = bytes(cnst.original_name, "UTF-8")
+                    impl.write(f"""\
+                        {{
+                            // {cnst.original_name}
+                            char data[] = {{ {','.join(map(lambda b: str(b), utf8))} }};
+                            register_classdb_global(\
+                                {self.global_context.address_of_expression(cnst.index)}, \
+                                (const char *)data, \
+                                {len(utf8)});
+                        }}
+                        """)
+
+    def _transpile_class_constants_initialization(self, writer: IO) -> None:
+        for cls in self.project.iter_classes_in_dependency_order():
+            class_context = self.class_contexts[cls.type_id]
+            for cc in class_context.constant_contexts.values():                    
+                writer.write(f"""\
+                    {{
+                        uint8_t data[] = {{ {','.join(map(lambda b: str(b), cc.constant.data))} }};
+                        int bytesRead;
+                        gd2c10->variant_decode(&{class_context.constants_array_identifier}[{cc.index}], data, {len(cc.constant.data)}, &bytesRead, true);
+                    }}
+                """)             
+

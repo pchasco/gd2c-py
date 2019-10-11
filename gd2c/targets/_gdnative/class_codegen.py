@@ -61,6 +61,25 @@ def transpile_vtable(class_context: ClassContext, writer: IO):
         }
     """)
 
+def transpile_class_constant_initialization(self, class_context: ClassContext, writer: IO):
+    if class_context.cls.has_constants:
+        writer.write(f"""\
+            if (0 == {class_context.constants_initialized_identifier}) {{
+        """) 
+        for const in class_context.cls.constants():
+            writer.write(f"""\
+                {{
+                    uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
+                    int bytesRead;
+                    gd2c10->variant_decode({class_context.address_of_constant(const.name)}, data, {len(const.data)}, &bytesRead, true);
+                }}
+            """) 
+
+        writer.write(f"""\
+                {class_context.constants_initialized_identifier} = 1;            
+            }}
+        """)            
+
 def transpile_ctor_signature(class_context: ClassContext, writer: IO):
     writer.write(f"""\
         void *{class_context.ctor_identifier}(godot_object *p_instance, void *p_method_data)
@@ -79,7 +98,7 @@ def transpile_ctor(class_context: ClassContext, writer: IO):
     if function_context:
         writer.write(f"""\
             {function_context.function_identifier}(p_instance, (void *)0, user_data, 0, (void*)0);
-        """)
+        """)        
 
     writer.write(f"""\
             printf("Exit: {class_context.ctor_identifier}\\n");

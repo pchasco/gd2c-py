@@ -15,25 +15,10 @@ _global_script_class_icons={
 
 [application]
 
-config/name="Test"
 run/main_scene="res://Node2D.tscn"
-config/icon="res://icon.png"
-
-[debug]
-
-settings/stdout/print_fps=true
-
-[display]
-
-window/vsync/use_vsync=false
-
-[physics]
-
-common/physics_fps=6000
+boot_splash/image="none.png"
+boot_splash/fullsize=false
 
 [rendering]
 
 quality/driver/driver_name="GLES2"
-vram_compression/import_etc=true
-vram_compression/import_etc2=false
-environment/default_environment="res://default_env.tres"

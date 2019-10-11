@@ -48,7 +48,6 @@ def transpile_function(function_context: FunctionContext, file: IO):
                     uint8_t data[] = {{ {','.join(map(lambda b: str(b), const.data))} }};
                     int bytesRead;
                     gd2c10->variant_decode(&{function_context.local_constants_array_identifier}[{const.index}], data, {len(const.data)}, &bytesRead, true);
-                    print_variant(&{function_context.local_constants_array_identifier}[{const.index}]);
                 }}
             """) 
             
@@ -57,11 +56,9 @@ def transpile_function(function_context: FunctionContext, file: IO):
             file.write(f"""\
                 {{
                     char data[] = {{ {','.join(map(lambda b: str(b), utf8))} }};
-                    godot_string s;
-                    api10->godot_string_new(&s);
-                    api10->godot_string_parse_utf8_with_len(&s, data, {len(utf8)});
-                    api10->godot_string_name_new(&{function_context.global_names_identifier}[{index}], &s);
-                    api10->godot_string_destroy(&s);
+                    api10->godot_string_new(&{function_context.global_strings_identifier}[{index}]);
+                    api10->godot_string_parse_utf8_with_len(&{function_context.global_strings_identifier}[{index}], data, {len(utf8)});
+                    api10->godot_string_name_new(&{function_context.global_names_identifier}[{index}], &{function_context.global_strings_identifier}[{index}]);
                 }}
                 """)
 
@@ -217,6 +214,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             receiver = FC.variables[receiver_address.address].address_of()
             try_vtable = receiver_address.mode == ADDRESS_MODE_SELF
 
+        vtable_entry = None
         if try_vtable:
             method_name = FC.func.global_names[op.name_index]
             ctx = FC.class_context.base_context if call_base else FC.class_context
@@ -251,7 +249,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         # if method is in vtable we can call with function pointer,
         # otherwise we will have to call with godot_variant_call
         if isinstance(op, CallReturnGDScriptOp):
-            file.write(f"godot_variant call_result = ") # type: ignore
+            file.write("godot_variant call_result = ")
 
         if vtable_entry:                
             base_chain = "base->" if call_base else ""
@@ -262,12 +260,12 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
                     f"p_user_data, " \
                     f"{op.arg_count}, " \
                     f"{args});\n")
-        else:
+        else:                
             file.write(\
                 f"api10->godot_variant_call(" \
                     f"{receiver}, " \
-                    f"{FC.global_names_identifier}[{op.name_index}], " \
-                    f"{args}, " \
+                    f"&{FC.global_strings_identifier}[{op.name_index}], " \
+                    f"(const godot_variant **){args}, " \
                     f"{op.arg_count}, " \
                     f"&__error);\n")
 
@@ -422,7 +420,47 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             }}        
         """)
 
-    # file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
+    def opcode_extendstest(op: ExtendsTestGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            gd2c10->extends_test({FC.variables[op.a].address_of()}, {FC.variables[op.b].address_of()}, {FC.variables[op.dest].address_of()});
+        """)
+
+    def opcode_constructdictionary(op: ConstructDictionaryGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            {{
+                godot_dictionary dict;
+                api10->godot_dictionary_new(&dict);
+            """)
+        for i in range(op.item_count):
+            file.write(f"""\
+                api10->godot_dictionary_set(&dict, {FC.variables[op.key_addresses[i]].address_of()}, {FC.variables[op.value_addresses[i]].address_of()});
+                """)
+        file.write(f"""\
+                api10->godot_variant_new_dictionary({FC.variables[op.dest].address_of()}, &dict);
+            }}
+            """)
+
+    def opcode_construct(op: ConstructGDScriptOp):
+        nonlocal FC
+        file.write(f"{{\n")
+        if op.arg_count > 0:
+            file.write(f"""\
+                godot_variant *args[] = {{ {", ".join([
+                    FC.variables[addr].address_of() for addr in op.args
+                ])} }};
+            """)     
+            args = "args"        
+        else:
+            args = "(void*)0"
+
+        file.write(f"""\
+            gd2c10->variant_construct({FC.variables[op.dest].address_of()}, {op.vtype.value}, {op.arg_count}, (const godot_variant **){args}, &__error);
+            }}
+            """)
+
+    #file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
@@ -480,11 +518,12 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         opcode_iteratebegin(op) # type: ignore
     elif op.opcode == OPCODE_ITERATE:
         opcode_iterate(op) # type: ignore
-
-    elif op.opcode == OPCODE_CONSTRUCT:
-        file.write(f"""// OPCODE_CONSTRUCT\n""")
+    elif op.opcode == OPCODE_EXTENDSTEST:
+        opcode_extendstest(op) # type: ignore
     elif op.opcode == OPCODE_CONSTRUCTDICTIONARY:
-        file.write(f"""// OPCODE_CONSTRUCTDICTIONARY\n""")
+        opcode_constructdictionary(op) # type: ignore
+    elif op.opcode == OPCODE_CONSTRUCT:
+        opcode_construct(op) # type: ignore
 
     elif op.opcode == OPCODE_YIELD:
         file.write(f"""// OPCODE_YIELD\n""")
@@ -492,8 +531,6 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         file.write(f"""// OPCODE_YIELDSIGNAL\n""")
     elif op.opcode == OPCODE_YIELDRESUME:
         file.write(f"""// OPCODE_YIELDRESUME\n""")
-    elif op.opcode == OPCODE_EXTENDSTEST:
-        file.write(f"""// OPCODE_EXTENDSTEST\n""")
     elif op.opcode == OPCODE_ISBUILTIN:
         file.write(f"""// OPCODE_ISBUILTIN\n""")
     elif op.opcode == OPCODE_ASSIGNTYPEDNATIVE:
