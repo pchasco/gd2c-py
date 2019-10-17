@@ -185,6 +185,11 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
 
     def opcode_return(op: ReturnGDScriptOp):
         nonlocal FC
+        assert FC
+        assert FC.func
+        assert FC.func.cfg
+        assert FC.func.cfg.exit_node
+
         file.write(f"""\
             api10->godot_variant_new_copy(&__return_value, {FC.variables[op.source].address_of()});        
             goto {FC.func.cfg.exit_node.label};
@@ -460,6 +465,13 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             }}
             """)
 
+    def opcode_copyparameter(op: CopyParameterGDScriptOp):
+        nonlocal FC
+        file.write(f"""\
+            if (p_num_args > {op.parameter.address.offset}) 
+                api10->godot_variant_new_copy({FC.variables[op.dest].address_of()}, {FC.variables[op.parameter.address.address].address_of()});
+            """)
+
     #file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
@@ -524,6 +536,8 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
         opcode_constructdictionary(op) # type: ignore
     elif op.opcode == OPCODE_CONSTRUCT:
         opcode_construct(op) # type: ignore
+    elif op.opcode == OPCODE_PARAMETER_COPY:
+        opcode_copyparameter(op) # type: ignore
 
     elif op.opcode == OPCODE_YIELD:
         file.write(f"""// OPCODE_YIELD\n""")

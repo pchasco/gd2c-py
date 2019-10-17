@@ -48,11 +48,14 @@ class JsonGDScriptLoader:
             func.return_vtype = VariantType.get(int(entry["return_type"]["type"]))
             func.global_names = entry["global_names"]
 
+            num_parameters = len(entry["parameters"])
+            len_jump_table = len(func.default_arguments_jump_table)
             for pindex, pentry in enumerate(entry["parameters"]):
                 param = GDScriptFunctionParameter(
                     pentry["name"], 
                     VariantType.get(pentry["type"]), 
                     pindex)
+                param.is_optional = pindex >= num_parameters - len_jump_table
                 func.add_parameter(param)
 
             for centry in entry["constants"]:

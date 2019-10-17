@@ -75,6 +75,7 @@ class GDScriptFunctionParameter:
         self.index = index
         self.is_assigned = False
         self.address = GDScriptAddress.create(ADDRESS_MODE_STACKVARIABLE, index)
+        self.is_optional = False
 
 class GDScriptFunction:
     name: str
@@ -107,6 +108,9 @@ class GDScriptFunction:
         self._ops = []
         self._mutates= set([])
         self.yields = False
+
+    def num_optional_parameters(self):
+        return len(default_arguments_jump_table)
 
     @property
     def has_constants(self) -> bool:
@@ -148,6 +152,11 @@ class GDScriptFunction:
 
     def add_constant(self, const: GDScriptFunctionConstant):
         self._constants[const.index] = const
+
+    def new_stack_variable(self, vtype: VariantType) -> GDScriptAddress:
+        addr = GDScriptAddress.create(ADDRESS_MODE_STACKVARIABLE, self.stack_size)
+        self.stack_size += 1
+        return addr
 
     def ops(self) -> Iterable[Tuple[int, GDScriptOp]]:
         for tup in self._ops:

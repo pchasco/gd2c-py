@@ -30,7 +30,7 @@ func dump_directory(source_dir, dest_dir):
 
 func _init():
     var exporter = GDScriptBytecodeExporter.new()
-	
+    
     var in_dir = ""
     var out_dir = ""
 
@@ -43,7 +43,7 @@ func _init():
         var dout = arg.trim_prefix("-Dout")
         if dout != arg:
             out_dir = dout
-	
+    
     print("in_dir:  ", in_dir)
     print("out_dir: ", out_dir)
 
@@ -51,6 +51,6 @@ func _init():
         dump_directory(in_dir, out_dir)
 
     quit()
-	
-	
+    
+    
 

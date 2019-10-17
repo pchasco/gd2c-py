@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
             # Transforms not requiring SSA form
             transform.strip_debug(func)
-            func.cfg.pretty_print()
+            #func.cfg.pretty_print()
 
             # Transforms done in SSA form
             if False:
