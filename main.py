@@ -101,5 +101,8 @@ if __name__ == "__main__":
     target.emit(project_output_path)
 
     # print_stuff(project, False, False)
+    for cls in project.iter_classes_in_dependency_order():
+        print(cls.resource_path, cls.name, sep=" -> ")
+
 
 

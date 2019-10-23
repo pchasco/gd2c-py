@@ -439,9 +439,16 @@ class ControlFlowGraph:
 
 def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
     worklist: List[int] = [0]
-    ops = list(func.ops())
     blocks: Dict[int, Block] = {}
     visited: Set[int] = set()
+    ops = list(func.ops())
+
+    # Clear reached flag on all ops to be set later. 
+    # Godot inserts some unreachable instructions which throws off 
+    # cfg generation. There may be more elegant solutions to the problems
+    # created by the unreachable instructions, but this is the easiest way
+    # to handle it.
+    func.clear_op_reached_flags()
 
     def get_block(ip: int):
         nonlocal blocks
@@ -468,6 +475,8 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
                 i += 1
                 continue
 
+            op.reached = True
+
             if isinstance(op, (JumpGDScriptOp, JumpIfGDScriptOp, JumpIfNotGDScriptOp, IterateGDScriptOp, IterateBeginGDScriptOp)):
                 worklist.append(op.branch)
                 worklist.append(op.fallthrough)
@@ -491,7 +500,7 @@ def build_control_flow_graph(func: GDScriptFunction) -> ControlFlowGraph:
             for op_ip, op in ops:
                 if op_ip >= end_ip:
                     break
-                elif op_ip >= begin_ip:
+                elif op_ip >= begin_ip and op.reached:
                     block.append_op(op)
             
             # Every block must end in a branch instruction unless it is

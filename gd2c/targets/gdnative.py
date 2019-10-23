@@ -72,24 +72,6 @@ class GDNativeCodeGen:
                 #define __GD2C_GODOTPROJECT__            
             
                 #include "gd2c.h"
-
-                void print_variant(godot_variant *v) {{
-                    godot_string s = api10->godot_variant_as_string(v);
-                    api10->godot_print(&s);
-                    api10->godot_string_destroy(&s);
-                }}
-
-                void register_classdb_global(godot_variant *p_variant, const char *p_name, int p_name_len) {{
-                    godot_string s;
-                    godot_string_name sn;
-                    api10->godot_string_new(&s);
-                    api10->godot_string_parse_utf8_with_len(&s, p_name, p_name_len);
-                    api10->godot_string_name_new(&sn, &s);
-                    gd2c10->get_gdscript_nativeclass(p_variant, &sn);
-                    api10->godot_string_destroy(&s);
-                    api10->godot_string_name_destroy(&sn);
-                }}
-
             """)
 
             for cls in self.project.iter_classes_in_dependency_order():
@@ -191,7 +173,8 @@ class GDNativeCodeGen:
                     }}
                 }}
 
-                initialize_gd2capi();
+                gd2c_api_initialize();
+                vtable_init_base();
                 
                 api10->godot_variant_new_nil(&__nil);
                 //printf("Exit: {self.project.export_prefix}_gdnative_init\\n");
@@ -214,6 +197,7 @@ class GDNativeCodeGen:
         writer.write(f"""\
             void GDN_EXPORT {self.project.export_prefix}_nativescript_init(void *p_handle) {{
                 //printf("Enter: {self.project.export_prefix}_nativescript_init\\n");
+        
         """)
 
         def visitor(cls: GDScriptClass, depth: int):
@@ -226,6 +210,16 @@ class GDNativeCodeGen:
                     godot_instance_destroy_func destroy = {{ NULL, NULL, NULL }};
                     destroy.destroy_func = {class_context.dtor_identifier};
                     nativescript10->godot_nativescript_register_class(p_handle, "{cls.name}", "{cls.built_in_type}", create, destroy);
+                }}
+            """)
+
+            writer.write(f"""\
+                {{
+                    //printf("  Register method: __gd2c_is_class_instanceof\\n");
+                    godot_instance_method method = {{ NULL, NULL, NULL }};
+                    method.method = &__gd2c_is_class_instanceof;
+                    godot_method_attributes attributes = {{ GODOT_METHOD_RPC_MODE_DISABLED }};
+                    nativescript10->godot_nativescript_register_method(p_handle, "{cls.name}", "__gd2c_is_class_instanceof", attributes, method);
                 }}
             """)
 

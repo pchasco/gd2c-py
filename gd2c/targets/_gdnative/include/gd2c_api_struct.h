@@ -23,6 +23,8 @@ struct gd2c_api_1_0 {
 	void GDAPI (*variant_call)(godot_variant *p_self, godot_string_name *p_method_name, godot_int p_argc, godot_variant **p_args, godot_variant *r_result, godot_variant_call_error *r_error);
 	void GDAPI (*extends_test)(godot_variant *p_a, godot_variant *p_b, godot_variant *r_result);
 	void GDAPI (*variant_construct)(godot_variant *r_result, godot_variant_type p_type, godot_int p_num_args, const godot_variant **p_args, godot_variant_call_error *r_error);
+	void GDAPI (*variant_get)(const godot_variant *p_self, const godot_variant *p_index, godot_variant *p_dest, godot_bool *r_valid);
+	void GDAPI (*variant_set)(const godot_variant *p_self, const godot_variant *p_index, const godot_variant *p_value, godot_bool *r_valid);
 };
 
 #endif

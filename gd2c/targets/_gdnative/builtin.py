@@ -22,22 +22,43 @@ def call_builtin(function_context: FunctionContext, op: CallBuiltinGDScriptOp, f
     # First check for built-ins implemented via intrinsic
     if op.function_index == BI.TYPE_CONVERT:
         type_convert(function_context, op, file)
-
-    # If no intrinsic then check to see if we can use call_gdscript_builtin
-    if not op.function_index in disallowed_builtins:
-        dest = function_context.variables[op.dest]
-        file.write(f"""\
-            {{
-                godot_variant *args[] = {{ {", ".join([
-                    FC.variables[addr].address_of() for addr in op.args
-                ])} }};
-                godot_variant_call_error err;
-                gd2c10->call_gdscript_builtin({op.function_index}, (const godot_variant **)args, {op.arg_count}, {dest.address_of()}, &err);
-            }}
-            """)
+    elif op.function_index == BI.RESOURCE_LOAD:
+        resource_load(function_context, op, file)
     else:
-        # Else...?
-        file.write(f""" // builtin call {op.function_index} not supported\n""")
+        # If no intrinsic then check to see if we can use call_gdscript_builtin
+        if not op.function_index in disallowed_builtins:
+            dest = function_context.variables[op.dest]
+            file.write(f"""\
+                {{
+                    godot_variant *args[] = {{ {", ".join([
+                        FC.variables[addr].address_of() for addr in op.args
+                    ])} }};
+                    godot_variant_call_error err;
+                    gd2c10->call_gdscript_builtin({op.function_index}, (const godot_variant **)args, {op.arg_count}, {dest.address_of()}, &err);
+                }}
+                """)
+        else:
+            # Else...?
+            file.write(f""" // builtin call {op.function_index} not supported\n""")
+
+def resource_load(function_context: FunctionContext, op: CallBuiltinGDScriptOp, file: IO) -> None:
+    assert op.arg_count == 1
+    file.write(f"""\
+        {{
+            godot_string extension = api10->godot_string_chars_to_utf8(".gd");
+            godot_string resource_path = api10->godot_variant_as_string({function_context.variables[op.args[0]].address_of()});
+            if (api10->godot_string_ends_with(&resource_path, &extension)) {{
+                godot_string ns = api10->godot_string_chars_to_utf8("ns");
+                godot_string new_resource_path = api10->godot_string_operator_plus(&resource_path, &ns);
+                api10->godot_string_destroy(&resource_path);
+                resource_path = new_resource_path;
+                api10->godot_string_destroy(&ns);
+            }}
+            gd2c10->resource_load({function_context.variables[op.dest].address_of()}, &resource_path);
+            api10->godot_string_destroy(&resource_path);
+            api10->godot_string_destroy(&extension);
+        }}        
+        """)
 
 def type_convert(function_context: FunctionContext, op: CallBuiltinGDScriptOp, file: IO) -> None:
     source = function_context.variables[op.args[0]]

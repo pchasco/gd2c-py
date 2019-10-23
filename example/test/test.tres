@@ -1,7 +1,6 @@
 [gd_resource type="GDNativeLibrary" format=2]
 
 [resource]
-symbol_prefix = "godot_"
 entry/OSX.64 = "res://libgodotproject.dylib"
 entry/Windows.64 = "res://godotproject.dll"
 dependency/OSX.64 = [  ]

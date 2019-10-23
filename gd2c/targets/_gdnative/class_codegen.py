@@ -42,6 +42,7 @@ def transpile_vtable(class_context: ClassContext, writer: IO):
             vtable_init(&{class_context.vtable_identifier}, \
                         &{class_context.base_vtable_identifier}, \
                         {class_context.cls.type_id}, \
+                        "{class_context.cls.name}",\
                         {len(class_context.vtable_entries)}, \
                         (void *)0, \
                         {class_context.vtable_methods_identifier}, \
@@ -169,4 +170,4 @@ def transpile_property_signatures(class_context: ClassContext, writer: IO):
                 void *_p_user_data,
                 godot_variant *p_value
             );
-        """)         
+        """)      

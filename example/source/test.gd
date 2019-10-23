@@ -1,15 +1,20 @@
-extends Node2D
+extends Node
 
-func test_parameter_copy_uses(a):
-    return a
+func test_isinstance():
+    var base_t = load("res://base.gd")
+    var derived_t = load("res://derived.gd")
 
-func test_parameter_copy_defs(a):
-    a *= 2
-    return a
+    var base = base_t.new()
+    print("base is res://base.gd       ? (T) ", base is base_t)
+    print("base is res://derived.gd    ? (F) ", base is derived_t)
 
-func test_parameter_copy_uses_with_defarg(a=1):
-    return a
+    var derived = derived_t.new()
+    print("derived is res://base.gd    ? (T) ", derived is base_t)
+    print("derived is res://derived.gd ? (F) ", derived is derived_t)
+    print("derived is Vector3          ? (F) ", derived is Vector3)
 
-func test_parameter_copy_defs_with_defarg(a=1, b=2, c=3):
-    a *= 2
-    return a
+    var vec = Vector3()
+    print("vec is res://base.gd        ? (F) ", vec is base_t)
+    print("vec is res://derived.gd     ? (F) ", vec is derived_t)
+    print("vec is Vector3              ? (T) ", vec is Vector3)
+

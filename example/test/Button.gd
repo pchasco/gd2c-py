@@ -1,7 +1,5 @@
 extends Button
 
-const C1 = 1
-
-func _init():
-    print("test")
-    print("C1: " + str(C1))
+func _on_Button_pressed():
+	var t = preload("res://test.gdns").new()
+	t.test_isinstance()

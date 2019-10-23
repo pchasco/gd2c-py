@@ -129,10 +129,16 @@ def sv2stack(addr: int):
         return addr
 
 class GDScriptOp:
+    _opcode: int
+    _reads: Set[int]
+    _writes: Set[int]
+    reached: bool
+
     def __init__(self, opcode: int):
         self._opcode = opcode
         self._reads: Set[int] = set()
         self._writes: Set[int] = set()
+        self.reached = False
 
     def set_rhs_ssa(self, addr: int, value: Value):
         pass
@@ -234,6 +240,43 @@ class ExtendsTestGDScriptOp(GDScriptOp):
         return ExtendsTestGDScriptOp(
             sv2stack(bytecode[index + 1]), 
             sv2stack(bytecode[index + 2]), 
+            sv2stack(bytecode[index + 3]))
+
+class IsBuiltInGDScriptOp(GDScriptOp):
+    def __init__(self, a: int, type_code: int, dest: int):
+        super().__init__(OPCODE_ISBUILTIN)
+        self.a = a
+        self.type_code = type_code
+        self.dest = dest
+        self.ssa_a = None
+        self.ssa_dest = None
+        self._reads = set([a])
+        self._writes = set([dest])
+
+    def __str__(self):
+        return "IS_BUILTIN"
+
+    @property
+    def stride(self) -> int:
+        return 4
+
+    def replace_address(self, old_address: int, new_address: int, update_def_use: bool = True) -> None:
+        dirty = False
+        if self.a == old_address:
+            self.a = new_address
+            dirty = True
+        if self.dest == old_address:
+            self.dest = new_address
+            dirty = True
+        if update_def_use and dirty:
+            self._reads = set([self.a])
+            self._writes = set([self.dest])
+
+    @staticmethod
+    def extract(func: GDScriptFunction, bytecode: List[int], index: int) -> 'IsBuiltInGDScriptOp':
+        return IsBuiltInGDScriptOp(
+            sv2stack(bytecode[index + 1]), 
+            bytecode[index + 2], 
             sv2stack(bytecode[index + 3]))
 
 class OperatorGDScriptOp(GDScriptOp):
@@ -1548,7 +1591,7 @@ class CopyParameterGDScriptOp(PseudoGDScriptOp):
 _extractors: Dict[int, Optional[Callable[[GDScriptFunction, List[int], int], GDScriptOp]]] = {
     OPCODE_OPERATOR: OperatorGDScriptOp.extract,
     OPCODE_EXTENDSTEST: ExtendsTestGDScriptOp.extract,
-    OPCODE_ISBUILTIN: None,
+    OPCODE_ISBUILTIN: IsBuiltInGDScriptOp.extract,
     OPCODE_SET: SetGDScriptOp.extract,
     OPCODE_GET: GetGDScriptOp.extract,
     OPCODE_SETNAMED: SetNamedGDScriptOp.extract,

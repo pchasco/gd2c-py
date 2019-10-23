@@ -109,6 +109,10 @@ class GDScriptFunction:
         self._mutates= set([])
         self.yields = False
 
+    def clear_op_reached_flags(self):
+        for _, op in self._ops:
+            op.reached = False
+
     def num_optional_parameters(self):
         return len(default_arguments_jump_table)
 
