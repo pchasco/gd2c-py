@@ -4,14 +4,15 @@
 
 [node name="Node2D" type="Node2D"]
 
-[node name="Button" type="Button" parent="."]
-margin_left = 154.229
-margin_top = 115.672
-margin_right = 274.229
-margin_bottom = 200.672
+[node name="runAllButton" type="Button" parent="."]
+margin_left = 23.0
+margin_top = 13.0
+margin_right = 148.0
+margin_bottom = 47.0
 action_mode = 0
+text = "Run All Tests"
 script = ExtResource( 1 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
-[connection signal="pressed" from="Button" to="Button" method="_on_Button_pressed"]
+[connection signal="pressed" from="runAllButton" to="runAllButton" method="_on_runAllButton_pressed"]

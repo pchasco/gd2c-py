@@ -46,7 +46,7 @@ def assert_nothing_in_ssa_form(project: Project):
 
 if __name__ == "__main__":   
     # These should be taken from command line args
-    project_path = "./example/source"
+    project_path = "./example/test"
     project_output_path = "./example/out"
     project_target = "gdnative"
     project = load_project(project_path)

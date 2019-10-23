@@ -125,6 +125,7 @@ def __transpile_nodes(function_context: FunctionContext, file: IO):
         worklist.extend(cfg.succs(node))
 
         file.write(f"{node.label}:\n")
+        file.write(f"""printf("%i : {node.label}\\n", __LINE__);\n""")
         for op in node.ops:
             __transpile_op(function_context, node, op, file)
 
@@ -496,7 +497,7 @@ def __transpile_op(function_context: FunctionContext, node: Block, op: GDScriptO
             }}
             """)
 
-    file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
+    #file.write(f"""printf("C LINE %i\\n", __LINE__);\n""")
 
     if op.opcode == OPCODE_OPERATOR:
         opcode_operator(op) # type: ignore     
